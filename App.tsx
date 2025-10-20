@@ -5,32 +5,11 @@ import { VehicleList } from './components/VehicleList';
 import { MutationLog } from './components/MutationLog';
 import { Settings } from './components/Settings';
 import { Modal } from './components/Modal';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { Vehicle, Mutation, VehicleStatus, MutationStatus, User, Role } from './types';
 import { GoogleGenAI } from "@google/genai";
-import { CameraIcon, CarIcon, ToolIcon, UserIcon } from './components/icons';
-
-const today = new Date();
-const oneMonthAgo = new Date(new Date().setMonth(today.getMonth() - 1)).toISOString();
-const fourMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 4)).toISOString();
-const sevenMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 7)).toISOString();
-const thirteenMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 13)).toISOString();
-
-
-const initialVehicles: Vehicle[] = [
-  { id: 'v1', plateNumber: 'B 1234 ABC', brand: 'Toyota Avanza', year: 2022, color: 'Silver', status: VehicleStatus.AVAILABLE, lastServiceDate: oneMonthAgo, lastOilChangeDate: oneMonthAgo, lastAccuCheckDate: oneMonthAgo },
-  { id: 'v2', plateNumber: 'D 5678 XYZ', brand: 'Honda BR-V', year: 2021, color: 'Black', status: VehicleStatus.AVAILABLE, lastServiceDate: oneMonthAgo, lastOilChangeDate: fourMonthsAgo, lastAccuCheckDate: oneMonthAgo },
-  { id: 'v3', plateNumber: 'F 9101 GHI', brand: 'Mitsubishi Xpander', year: 2023, color: 'White', status: VehicleStatus.IN_USE, lastServiceDate: sevenMonthsAgo, lastOilChangeDate: oneMonthAgo, lastAccuCheckDate: thirteenMonthsAgo },
-];
-
-const initialMutations: Mutation[] = [
-    { id: 'm1', vehicleId: 'v3', driver: 'Budi Santoso', destination: 'Gudang Pusat', startTime: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(), startKm: 15000, status: MutationStatus.ONGOING }
-];
-
-const initialUsers: User[] = [
-  { id: 'u1', username: 'admin', password: 'password', role: Role.ADMIN },
-  { id: 'u2', username: 'operator', password: 'password', role: Role.OPERATOR },
-];
+import { CameraIcon } from './components/icons';
+import { ApiConfigModal } from './components/ApiConfigModal';
+import { Loader } from './components/Loader';
 
 type View = 'dashboard' | 'logs' | 'settings';
 type ModalType = null | 'start-trip' | 'end-trip' | 'add-vehicle' | 'add-user' | 'update-maintenance' | 'edit-user' | 'change-password';
@@ -43,12 +22,22 @@ type AddVehicleFormData = Omit<Vehicle, 'id' | 'status' | 'lastServiceDate' | 'l
     lastAccuCheckDate: string;
 };
 
-
 function App() {
-  const [vehicles, setVehicles] = useLocalStorage<Vehicle[]>('vehicles', initialVehicles);
-  const [mutations, setMutations] = useLocalStorage<Mutation[]>('mutations', initialMutations);
-  const [users, setUsers] = useLocalStorage<User[]>('users', initialUsers);
-  const [currentUser, setCurrentUser] = useLocalStorage<User | null>('currentUser', null);
+  // Data state
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [mutations, setMutations] = useState<Mutation[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    const savedUser = sessionStorage.getItem('currentUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  
+  // App logic state
+  const [scriptUrl, setScriptUrl] = useState<string | null>(() => localStorage.getItem('googleScriptUrl'));
+  const [isLoading, setIsLoading] = useState(!!scriptUrl);
+  const [isMutating, setIsMutating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isInitialSetup, setIsInitialSetup] = useState(false);
   
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -63,21 +52,81 @@ function App() {
   const OIL_CHANGE_INTERVAL_MONTHS = 3;
   const ACCU_CHECK_INTERVAL_MONTHS = 12;
 
+  // Generic API call helper
+  const callApi = async (action: 'ADD_DATA' | 'UPDATE_DATA' | 'DELETE_DATA', payload: any) => {
+    if (!scriptUrl) throw new Error("API URL not configured.");
+    setIsMutating(true);
+    try {
+      const response = await fetch(scriptUrl, {
+        method: 'POST', redirect: 'follow', mode: 'cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action, payload })
+      });
+      if (!response.ok) throw new Error(`API call failed: ${response.statusText}`);
+      const result = await response.json();
+      if (result.error) throw new Error(`API Error: ${result.error}`);
+      if (!result.success) throw new Error(`API Error: ${result.message || 'Unknown error'}`);
+      return result.data;
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!scriptUrl) {
+      setIsLoading(false);
+      return;
+    }
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      setIsInitialSetup(false);
+      try {
+        const response = await fetch(scriptUrl);
+        if (!response.ok) throw new Error("Failed to fetch data from Google Sheet.");
+        const data = await response.json();
+        if (data.error) throw new Error(data.error);
+        
+        setVehicles(data.vehicles || []);
+        setMutations(data.mutations || []);
+
+        if (!data.users || data.users.length === 0) {
+            const defaultAdmin: User = {
+                id: 'u0',
+                username: 'admin',
+                password: 'password',
+                role: Role.ADMIN
+            };
+            setUsers([defaultAdmin]);
+            setIsInitialSetup(true);
+        } else {
+            setUsers(data.users);
+        }
+
+      } catch (err: any) {
+        setError(`Gagal memuat data: ${err.message}. Periksa URL API dan koneksi Anda.`);
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, [scriptUrl]);
+
+
   useEffect(() => {
       const alerts: MaintenanceAlert[] = [];
       const now = new Date();
-
       vehicles.forEach(vehicle => {
+          if(!vehicle.lastServiceDate || !vehicle.lastOilChangeDate || !vehicle.lastAccuCheckDate) return;
           const lastService = new Date(vehicle.lastServiceDate);
           if (new Date(new Date(vehicle.lastServiceDate).setMonth(lastService.getMonth() + SERVICE_INTERVAL_MONTHS)) < now) {
               alerts.push({ vehicle, reason: `Jadwal servis rutin terlewat.` });
           }
-
           const lastOilChange = new Date(vehicle.lastOilChangeDate);
           if (new Date(new Date(vehicle.lastOilChangeDate).setMonth(lastOilChange.getMonth() + OIL_CHANGE_INTERVAL_MONTHS)) < now) {
               alerts.push({ vehicle, reason: `Waktunya ganti oli.` });
           }
-          
           const lastAccuCheck = new Date(vehicle.lastAccuCheckDate);
           if (new Date(new Date(vehicle.lastAccuCheckDate).setMonth(lastAccuCheck.getMonth() + ACCU_CHECK_INTERVAL_MONTHS)) < now) {
               alerts.push({ vehicle, reason: `Waktunya pemeriksaan aki.` });
@@ -86,10 +135,15 @@ function App() {
       setMaintenanceAlerts(alerts);
   }, [vehicles]);
 
+  const handleSaveApiUrl = (url: string) => {
+    localStorage.setItem('googleScriptUrl', url);
+    setScriptUrl(url);
+  };
 
   const handleLogin = (username: string, password: string): boolean => {
       const user = users.find(u => u.username === username && u.password === password);
       if (user) {
+          sessionStorage.setItem('currentUser', JSON.stringify(user));
           setCurrentUser(user);
           setLoginError(null);
           return true;
@@ -100,6 +154,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('currentUser');
     setCurrentUser(null);
     setActiveView('dashboard');
   };
@@ -127,7 +182,7 @@ function App() {
     setSelectedUser(null);
   };
 
-  const handleStartTrip = (formData: { driver: string; destination: string; startKm: number; driverPhoto: string; }) => {
+  const handleStartTrip = async (formData: { driver: string; destination: string; startKm: number; driverPhoto: string; }) => {
     if (!selectedVehicle) return;
     
     const newMutation: Mutation = {
@@ -138,12 +193,20 @@ function App() {
       status: MutationStatus.ONGOING
     };
     
-    setMutations(prev => [...prev, newMutation]);
-    setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? { ...v, status: VehicleStatus.IN_USE } : v));
-    closeModal();
+    const updatedVehicle = { ...selectedVehicle, status: VehicleStatus.IN_USE };
+    
+    try {
+      await callApi('ADD_DATA', { sheetName: 'Mutations', data: newMutation });
+      await callApi('UPDATE_DATA', { sheetName: 'Vehicles', data: updatedVehicle });
+      setMutations(prev => [...prev, newMutation]);
+      setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? updatedVehicle : v));
+      closeModal();
+    } catch (err) {
+      alert(`Gagal memulai perjalanan: ${err}`);
+    }
   };
 
-  const handleEndTrip = (formData: { endKm: number; notes: string; }) => {
+  const handleEndTrip = async (formData: { endKm: number; notes: string; }) => {
     if (!selectedMutation || !selectedVehicle) return;
 
     const distance = formData.endKm - selectedMutation.startKm;
@@ -155,13 +218,20 @@ function App() {
       distance: distance > 0 ? distance : 0,
       status: MutationStatus.COMPLETED
     };
+    const updatedVehicle = { ...selectedVehicle, status: VehicleStatus.AVAILABLE };
 
-    setMutations(prev => prev.map(m => m.id === selectedMutation.id ? updatedMutation : m));
-    setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? { ...v, status: VehicleStatus.AVAILABLE } : v));
-    closeModal();
+    try {
+      await callApi('UPDATE_DATA', { sheetName: 'Mutations', data: updatedMutation });
+      await callApi('UPDATE_DATA', { sheetName: 'Vehicles', data: updatedVehicle });
+      setMutations(prev => prev.map(m => m.id === selectedMutation.id ? updatedMutation : m));
+      setVehicles(prev => prev.map(v => v.id === selectedVehicle.id ? updatedVehicle : v));
+      closeModal();
+    } catch (err) {
+      alert(`Gagal menyelesaikan perjalanan: ${err}`);
+    }
   };
   
-  const handleCreateVehicle = (formData: AddVehicleFormData) => {
+  const handleCreateVehicle = async (formData: AddVehicleFormData) => {
     const newVehicle: Vehicle = {
         id: `v${Date.now()}`,
         plateNumber: formData.plateNumber,
@@ -173,33 +243,51 @@ function App() {
         lastOilChangeDate: new Date(formData.lastOilChangeDate).toISOString(),
         lastAccuCheckDate: new Date(formData.lastAccuCheckDate).toISOString(),
     };
-    setVehicles(prev => [...prev, newVehicle]);
-    closeModal();
+    try {
+        await callApi('ADD_DATA', { sheetName: 'Vehicles', data: newVehicle });
+        setVehicles(prev => [...prev, newVehicle]);
+        closeModal();
+    } catch (err) {
+        alert(`Gagal menambah kendaraan: ${err}`);
+    }
   };
   
-  const handleCreateUser = (formData: Omit<User, 'id'>) => {
-    const newUser: User = {
-        id: `u${Date.now()}`,
-        ...formData,
-    };
-    setUsers(prev => [...prev, newUser]);
-    closeModal();
+  const handleCreateUser = async (formData: Omit<User, 'id'>) => {
+    const newUser: User = { id: `u${Date.now()}`, ...formData };
+    try {
+        if(isInitialSetup) { // If it's the first user, replace the temporary admin
+            await callApi('ADD_DATA', { sheetName: 'Users', data: newUser });
+            setUsers([newUser]);
+            setIsInitialSetup(false);
+        } else {
+            await callApi('ADD_DATA', { sheetName: 'Users', data: newUser });
+            setUsers(prev => [...prev, newUser]);
+        }
+        closeModal();
+    } catch (err) {
+        alert(`Gagal menambah pengguna: ${err}`);
+    }
   };
 
-  const handleUpdateMaintenance = (vehicleId: string, type: MaintenanceType) => {
+  const handleUpdateMaintenance = async (vehicleId: string, type: MaintenanceType) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (!vehicle) return;
     const today = new Date().toISOString();
-    setVehicles(prev => prev.map(v => {
-      if (v.id === vehicleId) {
-        if (type === 'service') return { ...v, lastServiceDate: today };
-        if (type === 'oil') return { ...v, lastOilChangeDate: today };
-        if (type === 'accu') return { ...v, lastAccuCheckDate: today };
-      }
-      return v;
-    }));
-    closeModal();
+    let updatedVehicle: Vehicle = { ...vehicle };
+
+    if (type === 'service') updatedVehicle.lastServiceDate = today;
+    if (type === 'oil') updatedVehicle.lastOilChangeDate = today;
+    if (type === 'accu') updatedVehicle.lastAccuCheckDate = today;
+
+    try {
+      await callApi('UPDATE_DATA', { sheetName: 'Vehicles', data: updatedVehicle });
+      setVehicles(prev => prev.map(v => v.id === vehicleId ? updatedVehicle : v));
+      closeModal();
+    } catch (err) {
+      alert(`Gagal memperbarui perawatan: ${err}`);
+    }
   };
 
-  // User Management Handlers
   const handleOpenEditUserModal = (user: User) => {
     setSelectedUser(user);
     setActiveModal('edit-user');
@@ -210,24 +298,52 @@ function App() {
     setActiveModal('change-password');
   };
 
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     if (userId === currentUser?.id) {
       alert("Anda tidak dapat menghapus akun Anda sendiri.");
       return;
     }
     if (window.confirm("Apakah Anda yakin ingin menghapus pengguna ini?")) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
+      try {
+        await callApi('DELETE_DATA', { sheetName: 'Users', id: userId });
+        setUsers(prev => prev.filter(u => u.id !== userId));
+      } catch (err) {
+        alert(`Gagal menghapus pengguna: ${err}`);
+      }
     }
   };
 
-  const handleUpdateUser = (userId: string, formData: { username: string; role: Role; }) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...formData } : u));
-    closeModal();
+  const handleUpdateUser = async (userId: string, formData: { username: string; role: Role; }) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const updatedUser = { ...user, ...formData };
+    try {
+      await callApi('UPDATE_DATA', { sheetName: 'Users', data: updatedUser });
+      setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+      closeModal();
+    } catch (err) {
+      alert(`Gagal memperbarui pengguna: ${err}`);
+    }
   };
 
-  const handleChangePassword = (userId: string, newPassword: string) => {
-    setUsers(prev => prev.map(u => u.id === userId ? { ...u, password: newPassword } : u));
-    closeModal();
+  const handleChangePassword = async (userId: string, newPassword: string) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+    const updatedUser = { ...user, password: newPassword };
+    try {
+      await callApi('UPDATE_DATA', { sheetName: 'Users', data: updatedUser });
+      setUsers(prev => prev.map(u => (u.id === userId ? updatedUser : u)));
+      
+      // If the current user changes their own password, update the session storage
+      if (currentUser?.id === userId) {
+          sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+          setCurrentUser(updatedUser);
+      }
+      
+      closeModal();
+    } catch (err) {
+      alert(`Gagal mengganti password: ${err}`);
+    }
   };
 
 
@@ -274,9 +390,38 @@ function App() {
         return null;
     }
   };
+
+  if (!scriptUrl) {
+      return <ApiConfigModal onSave={handleSaveApiUrl} />;
+  }
   
+  if (isLoading) {
+      return (
+          <div className="flex h-screen bg-slate-100 items-center justify-center">
+              <Loader message="Menghubungkan ke Google Sheets..." />
+          </div>
+      );
+  }
+
+  if (error) {
+      return (
+          <div className="flex h-screen bg-slate-100 items-center justify-center p-4">
+              <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-lg">
+                  <h2 className="text-xl font-bold text-red-600 mb-4">Terjadi Kesalahan</h2>
+                  <p className="text-slate-600 mb-6">{error}</p>
+                  <button 
+                    onClick={() => { localStorage.removeItem('googleScriptUrl'); window.location.reload(); }}
+                    className="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700"
+                  >
+                    Konfigurasi Ulang URL
+                  </button>
+              </div>
+          </div>
+      );
+  }
+
   if (!currentUser) {
-      return <LoginScreen onLogin={handleLogin} error={loginError} />;
+      return <LoginScreen onLogin={handleLogin} error={loginError} isInitialSetup={isInitialSetup} />;
   }
 
   return (
@@ -289,7 +434,8 @@ function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {isMutating && <Loader message="Menyimpan perubahan..." />}
         <Header onMenuClick={() => setSidebarOpen(true)} currentUser={currentUser} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto">
           {renderContent()}
@@ -341,7 +487,7 @@ function App() {
   );
 }
 
-const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error: string | null }> = ({ onLogin, error }) => {
+const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error: string | null; isInitialSetup: boolean; }> = ({ onLogin, error, isInitialSetup }) => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -350,8 +496,9 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
         e.preventDefault();
         setIsLoading(true);
         setTimeout(() => {
-            onLogin(username, password);
-            setIsLoading(false);
+            if(!onLogin(username, password)) {
+              setIsLoading(false);
+            }
         }, 500);
     };
 
@@ -360,12 +507,21 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
             <div className="max-w-md w-full mx-auto">
                 <div className="flex justify-center items-center mb-6">
                     <div className="p-4 bg-indigo-600 text-white rounded-lg shadow-lg">
-                        <CarIcon className="h-8 w-8"/>
+                        <CameraIcon className="h-8 w-8"/>
                     </div>
                 </div>
                 <h1 className="text-3xl font-bold text-center text-slate-800 mb-2">Sistem Mutasi Kendaraan</h1>
                 <p className="text-center text-slate-600 mb-8">Silakan masuk untuk melanjutkan</p>
                 <div className="bg-white p-8 rounded-lg shadow-lg">
+                    {isInitialSetup && (
+                        <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm p-4 rounded-md mb-6">
+                            <p><span className="font-bold">Setup Awal:</span> Sheet pengguna Anda kosong.</p>
+                            <p>Gunakan kredensial berikut untuk login pertama kali:</p>
+                            <p className="mt-2">Username: <code className="bg-slate-200 text-slate-800 p-1 rounded">admin</code></p>
+                            <p>Password: <code className="bg-slate-200 text-slate-800 p-1 rounded">password</code></p>
+                            <p className="mt-2 text-xs">Penting: Segera ganti password ini di menu Pengaturan setelah login.</p>
+                        </div>
+                    )}
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-slate-700">Username</label>
@@ -638,7 +794,7 @@ const AddUserForm: React.FC<{ onSubmit: (data: any) => void, onCancel: () => voi
 
 const UpdateMaintenanceForm: React.FC<{ vehicle: Vehicle, onUpdate: (vehicleId: string, type: MaintenanceType) => void, onCancel: () => void }> = ({ vehicle, onUpdate, onCancel }) => {
     
-    const formatDate = (dateString: string) => new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+    const formatDate = (dateString: string) => dateString ? new Date(dateString).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
 
     return (
         <div className="space-y-4">
