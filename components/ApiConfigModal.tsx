@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { ServerIcon } from './icons'; 
 
 interface ApiConfigModalProps {
-  onSave: (url: string) => void;
-  currentUrl?: string | null;
+  // No props needed anymore
 }
 
 const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -25,18 +24,7 @@ const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
 };
 
-export const ApiConfigModal: React.FC<ApiConfigModalProps> = ({ onSave }) => {
-  const [url, setUrl] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (url.startsWith('https://script.google.com/macros/s/')) {
-      onSave(url);
-    } else {
-      alert('URL tidak valid. Harap masukkan URL Google Apps Script Web App yang benar.');
-    }
-  };
-  
+export const ApiConfigModal: React.FC<ApiConfigModalProps> = () => {
   const appsScriptCode = `
 const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 const VEHICLES_SHEET = SPREADSHEET.getSheetByName("Vehicles");
@@ -208,31 +196,18 @@ function doPost(e) {
             </div>
              <div>
                 <h3 className="font-bold text-lg mb-2">Langkah 3: Hubungkan Aplikasi</h3>
-                <p>Tempelkan URL yang telah Anda salin dari langkah sebelumnya ke dalam kolom di bawah ini.</p>
-                 <form onSubmit={handleSubmit} className="mt-4 p-4 border rounded-lg bg-slate-50">
-                  <div>
-                    <label htmlFor="apiUrl" className="block text-sm font-medium text-slate-700 mb-1">
-                      Google Apps Script Web App URL
-                    </label>
-                    <input
-                      type="url"
-                      id="apiUrl"
-                      value={url}
-                      onChange={(e) => setUrl(e.target.value)}
-                      placeholder="https://script.google.com/macros/s/..."
-                      required
-                      className="block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <button
-                      type="submit"
-                      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                    >
-                      Simpan dan Hubungkan
-                    </button>
-                  </div>
-                </form>
+                <p className="mb-2">Setelah Anda menyalin URL Web App, Anda perlu memasukkannya ke dalam file konfigurasi aplikasi.</p>
+                 <div className="mt-4 p-4 border rounded-lg bg-slate-50">
+                    <p className="font-semibold text-slate-800">Aksi yang Diperlukan:</p>
+                    <ol className="list-decimal list-inside space-y-2 mt-2 pl-4">
+                        <li>Buka file bernama <code className="bg-slate-200 p-1 rounded text-xs">config.ts</code> di dalam folder proyek Anda.</li>
+                        <li>
+                           Ganti teks placeholder <code className="bg-slate-200 p-1 rounded text-xs">"MASUKKAN_URL_SCRIPT_ANDA_DI_SINI"</code> dengan URL yang telah Anda salin.
+                        </li>
+                        <li>Simpan file tersebut.</li>
+                        <li>Muat ulang (refresh) halaman ini di browser Anda. Aplikasi akan terhubung secara otomatis.</li>
+                    </ol>
+                </div>
             </div>
         </div>
 

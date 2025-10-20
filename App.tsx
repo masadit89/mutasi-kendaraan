@@ -10,6 +10,7 @@ import { GoogleGenAI } from "@google/genai";
 import { CameraIcon } from './components/icons';
 import { ApiConfigModal } from './components/ApiConfigModal';
 import { Loader } from './components/Loader';
+import { GOOGLE_SCRIPT_URL } from './config';
 
 type View = 'dashboard' | 'logs' | 'settings';
 type ModalType = null | 'start-trip' | 'end-trip' | 'add-vehicle' | 'add-user' | 'update-maintenance' | 'edit-user' | 'change-password';
@@ -33,8 +34,10 @@ function App() {
   });
   
   // App logic state
-  const [scriptUrl, setScriptUrl] = useState<string | null>(() => localStorage.getItem('googleScriptUrl'));
-  const [isLoading, setIsLoading] = useState(!!scriptUrl);
+  // FIX: Cast GOOGLE_SCRIPT_URL to string to resolve TypeScript literal type comparison error.
+  // This check is intentional to determine if the app is configured with a real URL.
+  const isConfigured = GOOGLE_SCRIPT_URL && (GOOGLE_SCRIPT_URL as string) !== "MASUKKAN_URL_SCRIPT_ANDA_DI_SINI";
+  const [isLoading, setIsLoading] = useState(isConfigured);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
@@ -54,10 +57,10 @@ function App() {
 
   // Generic API call helper
   const callApi = async (action: 'ADD_DATA' | 'UPDATE_DATA' | 'DELETE_DATA', payload: any) => {
-    if (!scriptUrl) throw new Error("API URL not configured.");
+    if (!isConfigured) throw new Error("Aplikasi belum dikonfigurasi. Harap edit file config.ts");
     setIsMutating(true);
     try {
-      const response = await fetch(scriptUrl, {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST', redirect: 'follow', mode: 'cors',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action, payload })
@@ -73,7 +76,7 @@ function App() {
   };
 
   useEffect(() => {
-    if (!scriptUrl) {
+    if (!isConfigured) {
       setIsLoading(false);
       return;
     }
@@ -82,7 +85,7 @@ function App() {
       setError(null);
       setIsInitialSetup(false);
       try {
-        const response = await fetch(scriptUrl);
+        const response = await fetch(GOOGLE_SCRIPT_URL);
         if (!response.ok) throw new Error("Failed to fetch data from Google Sheet.");
         const data = await response.json();
         if (data.error) throw new Error(data.error);
@@ -104,14 +107,14 @@ function App() {
         }
 
       } catch (err: any) {
-        setError(`Gagal memuat data: ${err.message}. Periksa URL API dan koneksi Anda.`);
+        setError(`Gagal memuat data: ${err.message}. Periksa URL di file config.ts dan koneksi Anda.`);
         console.error(err);
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [scriptUrl]);
+  }, [isConfigured]);
 
 
   useEffect(() => {
@@ -134,11 +137,6 @@ function App() {
       });
       setMaintenanceAlerts(alerts);
   }, [vehicles]);
-
-  const handleSaveApiUrl = (url: string) => {
-    localStorage.setItem('googleScriptUrl', url);
-    setScriptUrl(url);
-  };
 
   const handleLogin = (username: string, password: string): boolean => {
       const user = users.find(u => u.username === username && u.password === password);
@@ -391,8 +389,8 @@ function App() {
     }
   };
 
-  if (!scriptUrl) {
-      return <ApiConfigModal onSave={handleSaveApiUrl} />;
+  if (!isConfigured) {
+      return <ApiConfigModal />;
   }
   
   if (isLoading) {
@@ -410,11 +408,12 @@ function App() {
                   <h2 className="text-xl font-bold text-red-600 mb-4">Terjadi Kesalahan</h2>
                   <p className="text-slate-600 mb-6">{error}</p>
                   <button 
-                    onClick={() => { localStorage.removeItem('googleScriptUrl'); window.location.reload(); }}
+                    onClick={() => window.location.reload()}
                     className="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700"
                   >
-                    Konfigurasi Ulang URL
+                    Coba Lagi
                   </button>
+                  <p className="text-xs text-slate-500 mt-4">Pastikan URL di file <code className="bg-slate-200 p-1 rounded">config.ts</code> sudah benar.</p>
               </div>
           </div>
       );
