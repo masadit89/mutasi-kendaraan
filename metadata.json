@@ -1,0 +1,7 @@
+{
+  "name": "Sistem Mutasi Kendaraan",
+  "description": "Aplikasi web untuk mengelola mutasi kendaraan kantor keluar dan masuk menggunakan sistem berbasis QR code untuk pencatatan yang efisien dan akurat.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
