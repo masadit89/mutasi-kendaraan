@@ -1,7 +1,7 @@
-
 import React, { useState, useMemo } from 'react';
 import { Mutation, MutationStatus, Vehicle } from '../types';
 import { HistoryIcon, DownloadIcon, SheetIcon, SearchIcon } from './icons';
+import { generateSingleReportPdf } from '../utils';
 
 // Add type declaration for jsPDF libraries loaded from CDN
 declare global {
@@ -35,20 +35,27 @@ export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles })
   const filteredMutations = useMemo(() => {
     return [...mutations]
         .filter(mutation => {
-            const driverMatch = searchDriver ? mutation.driver.toLowerCase().includes(searchDriver.toLowerCase()) : true;
+            // Hanya tampilkan perjalanan yang sudah selesai di log
+            if (mutation.status !== MutationStatus.COMPLETED) {
+                return false;
+            }
 
-            if (!startDate && !endDate) return driverMatch;
-            
-            const startTime = new Date(mutation.startTime).getTime();
-            const startFilter = startDate ? new Date(startDate).getTime() : 0;
-            const endFilter = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Infinity;
+            const driverMatch = !searchDriver || mutation.driver.toLowerCase().includes(searchDriver.toLowerCase());
 
-            const dateMatch = startTime >= startFilter && startTime <= endFilter;
+            const dateMatch = (!startDate && !endDate) || (() => {
+                const startTime = new Date(mutation.startTime).getTime();
+                const startFilter = startDate ? new Date(startDate).getTime() : 0;
+                const endFilter = endDate ? new Date(endDate).setHours(23, 59, 59, 999) : Infinity;
+                return startTime >= startFilter && startTime <= endFilter;
+            })();
 
             return driverMatch && dateMatch;
         })
         .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
   }, [mutations, startDate, endDate, searchDriver]);
+
+  const hasAnyMutations = mutations.length > 0;
+  const hasCompletedMutations = useMemo(() => mutations.some(m => m.status === MutationStatus.COMPLETED), [mutations]);
 
   const handleResetFilters = () => {
     setStartDate('');
@@ -90,52 +97,14 @@ export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles })
     document.body.removeChild(link);
   };
   
-  const generateSingleReportPdf = (mutation: Mutation) => {
+  const handleGenerateSinglePdf = async (mutation: Mutation) => {
     const vehicle = getVehicle(mutation.vehicleId);
-    if (!vehicle || !mutation.endTime || mutation.endKm === undefined || mutation.distance === undefined) {
-      alert("Data perjalanan tidak lengkap untuk membuat PDF.");
-      return;
+    if(vehicle) {
+        await generateSingleReportPdf(mutation, vehicle);
+    } else {
+        alert("Kendaraan untuk laporan ini tidak ditemukan.");
     }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Formulir Laporan Perjalanan Kendaraan', 105, 20, { align: 'center' });
-    doc.setLineWidth(0.5);
-    doc.line(20, 28, 190, 28);
-    const tableBody = [
-        ['Nomor Polisi', `: ${vehicle.plateNumber}`], ['Kendaraan', `: ${vehicle.brand} (${vehicle.year})`],
-        ['Pengemudi', `: ${mutation.driver}`], ['Tujuan', `: ${mutation.destination}`],
-        ['Waktu Mulai', `: ${formatDate(mutation.startTime)}`], ['Waktu Selesai', `: ${formatDate(mutation.endTime)}`],
-        ['Kilometer Awal', `: ${mutation.startKm} km`], ['Kilometer Akhir', `: ${mutation.endKm} km`],
-        ['Jarak Tempuh', `: ${mutation.distance} km`],
-    ];
-    (doc as any).autoTable({
-        startY: 38, body: tableBody, theme: 'plain', styles: { cellPadding: 2, fontSize: 11 },
-        columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 }, 1: { cellWidth: 'auto' } },
-    });
-    const finalY = (doc as any).lastAutoTable.finalY;
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Catatan Perjalanan:', 20, finalY + 15);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
-    const notesText = doc.splitTextToSize(mutation.notes || 'Tidak ada catatan.', 170);
-    doc.text(notesText, 22, finalY + 22);
-    doc.rect(20, finalY + 18, 170, Math.max(30, notesText.length * 5 + 10));
-    const signatureY = finalY + 75;
-    doc.setFontSize(11);
-    doc.text('Diserahkan oleh,', 30, signatureY);
-    doc.text('Diterima oleh,', 140, signatureY);
-    doc.line(30, signatureY + 20, 80, signatureY + 20);
-    doc.text(mutation.driver, 30, signatureY + 25);
-    doc.text('Pengemudi', 30, signatureY + 30);
-    doc.line(140, signatureY + 20, 190, signatureY + 20);
-    doc.text('(___________________)', 140, signatureY + 25);
-    doc.text('Petugas', 140, signatureY + 30);
-    const formattedDate = new Date(mutation.endTime).toISOString().split('T')[0];
-    doc.save(`Laporan-Perjalanan-${vehicle.plateNumber}-${formattedDate}.pdf`);
-  };
+  }
 
   const exportTableToPdf = () => {
     const { jsPDF } = window.jspdf;
@@ -233,7 +202,17 @@ export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles })
                 const vehicle = getVehicle(mutation.vehicleId);
                 return (
                   <tr key={mutation.id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{vehicle ? vehicle.plateNumber : 'N/A'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">
+                        <a 
+                            href={`/?reportId=${mutation.id}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-green-600 hover:text-green-800 hover:underline"
+                            title="Lihat Laporan Detail"
+                        >
+                            {vehicle ? vehicle.plateNumber : 'N/A'}
+                        </a>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">{mutation.driver}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                         {mutation.driverPhoto ? (
@@ -252,7 +231,7 @@ export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles })
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                       {mutation.status === MutationStatus.COMPLETED && (
-                        <button onClick={() => generateSingleReportPdf(mutation)} className="text-green-600 hover:text-green-900 transition-colors duration-200 p-2 rounded-full hover:bg-green-100" title="Unduh Laporan PDF Tunggal" aria-label="Unduh Laporan PDF Tunggal">
+                        <button onClick={() => handleGenerateSinglePdf(mutation)} className="text-green-600 hover:text-green-900 transition-colors duration-200 p-2 rounded-full hover:bg-green-100" title="Unduh Laporan PDF Tunggal" aria-label="Unduh Laporan PDF Tunggal">
                           <DownloadIcon className="w-5 h-5" />
                         </button>
                       )}
@@ -265,7 +244,12 @@ export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles })
         </div>
         {filteredMutations.length === 0 && (
             <p className="text-center py-8 text-sm text-slate-500">
-                {mutations.length > 0 ? "Tidak ada data yang cocok dengan filter Anda." : "Belum ada riwayat perjalanan yang tercatat."}
+                {!hasAnyMutations
+                    ? "Belum ada riwayat perjalanan yang tercatat."
+                    : !hasCompletedMutations
+                    ? "Belum ada riwayat perjalanan yang selesai."
+                    : "Tidak ada data yang cocok dengan filter Anda."
+                }
             </p>
         )}
       </div>

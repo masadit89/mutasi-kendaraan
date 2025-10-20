@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -8,13 +7,14 @@ import { Settings } from './components/Settings';
 import { Modal } from './components/Modal';
 import { Vehicle, Mutation, VehicleStatus, MutationStatus, User, Role } from './types';
 import { GoogleGenAI } from "@google/genai";
-import { CameraIcon, CarIcon } from './components/icons';
+import { CameraIcon, CarIcon, UserIcon } from './components/icons';
 import { ApiConfigModal } from './components/ApiConfigModal';
 import { Loader } from './components/Loader';
 import { GOOGLE_SCRIPT_URL } from './config';
+import { ReportViewer } from './components/ReportViewer';
 
 type View = 'dashboard' | 'logs' | 'settings';
-type ModalType = null | 'start-trip' | 'end-trip' | 'add-vehicle' | 'add-user' | 'update-maintenance' | 'edit-user' | 'change-password';
+type ModalType = null | 'start-trip' | 'end-trip' | 'add-vehicle' | 'add-user' | 'update-maintenance' | 'edit-user' | 'change-password' | 'edit-vehicle';
 interface MaintenanceAlert { vehicle: Vehicle; reason: string; }
 type MaintenanceType = 'service' | 'oil' | 'accu';
 
@@ -35,13 +35,12 @@ function App() {
   });
   
   // App logic state
-  // FIX: Cast GOOGLE_SCRIPT_URL to string to resolve TypeScript literal type comparison error.
-  // This check is intentional to determine if the app is configured with a real URL.
   const isConfigured = GOOGLE_SCRIPT_URL && (GOOGLE_SCRIPT_URL as string) !== "MASUKKAN_URL_SCRIPT_ANDA_DI_SINI";
   const [isLoading, setIsLoading] = useState(isConfigured);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isInitialSetup, setIsInitialSetup] = useState(false);
+  const [reportId, setReportId] = useState<string | null>(null);
   
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setSidebarOpen] = useState(false);
@@ -77,10 +76,17 @@ function App() {
   };
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const idFromUrl = urlParams.get('reportId');
+    if (idFromUrl) {
+      setReportId(idFromUrl);
+    }
+
     if (!isConfigured) {
       setIsLoading(false);
       return;
     }
+
     const fetchData = async () => {
       setIsLoading(true);
       setError(null);
@@ -345,6 +351,38 @@ function App() {
     }
   };
 
+  const handleOpenEditVehicleModal = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setActiveModal('edit-vehicle');
+  };
+
+  const handleDeleteVehicle = async (vehicleId: string) => {
+    const vehicleToDelete = vehicles.find(v => v.id === vehicleId);
+    if (vehicleToDelete?.status === VehicleStatus.IN_USE) {
+        alert("Tidak dapat menghapus kendaraan yang sedang dalam perjalanan.");
+        return;
+    }
+
+    if (window.confirm("Apakah Anda yakin ingin menghapus kendaraan ini? Tindakan ini tidak dapat diurungkan.")) {
+      try {
+        await callApi('DELETE_DATA', { sheetName: 'Vehicles', id: vehicleId });
+        setVehicles(prev => prev.filter(v => v.id !== vehicleId));
+      } catch (err) {
+        alert(`Gagal menghapus kendaraan: ${err}`);
+      }
+    }
+  };
+
+  const handleUpdateVehicle = async (updatedVehicleData: Vehicle) => {
+      try {
+          await callApi('UPDATE_DATA', { sheetName: 'Vehicles', data: updatedVehicleData });
+          setVehicles(prev => prev.map(v => (v.id === updatedVehicleData.id ? updatedVehicleData : v)));
+          closeModal();
+      } catch (err) {
+          alert(`Gagal memperbarui kendaraan: ${err}`);
+      }
+  };
+
 
   const generateAINotes = async (mutation: Mutation | null): Promise<string> => {
     if (!mutation) return "Informasi perjalanan tidak ditemukan.";
@@ -376,8 +414,12 @@ function App() {
       case 'settings':
         if (currentUser?.role === Role.ADMIN) {
           return <Settings 
-            vehicles={vehicles} onAddVehicle={() => setActiveModal('add-vehicle')} 
-            users={users} onAddUser={() => setActiveModal('add-user')} 
+            vehicles={vehicles} 
+            onAddVehicle={() => setActiveModal('add-vehicle')} 
+            onEditVehicle={handleOpenEditVehicleModal}
+            onDeleteVehicle={handleDeleteVehicle}
+            users={users} 
+            onAddUser={() => setActiveModal('add-user')} 
             currentUser={currentUser}
             onEditUser={handleOpenEditUserModal}
             onChangePassword={handleOpenChangePasswordModal}
@@ -397,9 +439,13 @@ function App() {
   if (isLoading) {
       return (
           <div className="flex h-screen items-center justify-center">
-              <Loader message="Menghubungkan ke Google Sheets..." />
+              <Loader message={reportId ? "Memuat Laporan..." : "Menghubungkan ke Google Sheets..."} />
           </div>
       );
+  }
+
+  if (reportId) {
+    return <ReportViewer reportId={reportId} mutations={mutations} vehicles={vehicles} />;
   }
 
   if (error) {
@@ -456,6 +502,15 @@ function App() {
         {activeModal === 'add-vehicle' && (
              <Modal isOpen={true} onClose={closeModal} title="Tambah Kendaraan Baru">
                 <AddVehicleForm onSubmit={handleCreateVehicle} onCancel={closeModal} />
+            </Modal>
+        )}
+        {activeModal === 'edit-vehicle' && selectedVehicle && (
+            <Modal isOpen={true} onClose={closeModal} title={`Edit Kendaraan - ${selectedVehicle.plateNumber}`}>
+                <EditVehicleForm 
+                    vehicle={selectedVehicle} 
+                    onSubmit={handleUpdateVehicle} 
+                    onCancel={closeModal} 
+                />
             </Modal>
         )}
         {activeModal === 'add-user' && (
@@ -549,7 +604,7 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
 };
 
 const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void, onCancel: () => void }> = ({ onSubmit, onCancel }) => {
-    const [formData, setFormData] = useState({ driver: '', destination: '', startKm: 0 });
+    const [formData, setFormData] = useState({ driver: '', destination: '', startKm: '' });
     const [photo, setPhoto] = useState<string | null>(null);
     const [isCameraOn, setIsCameraOn] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -594,8 +649,9 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value, type } = e.target;
-        setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseFloat(value) || 0 : value }));
+        const { name, value } = e.target;
+        const updatedValue = name === 'startKm' ? value.replace(/[^0-9]/g, '') : value;
+        setFormData(prev => ({ ...prev, [name]: updatedValue }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -604,10 +660,16 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
             alert("Harap ambil foto pengemudi.");
             return;
         }
-        if (formData.driver && formData.destination && formData.startKm > 0) {
-            onSubmit({...formData, driverPhoto: photo});
+        const startKmNumber = parseInt(formData.startKm, 10);
+        if (formData.driver && formData.destination && !isNaN(startKmNumber) && startKmNumber > 0) {
+            onSubmit({
+              driver: formData.driver,
+              destination: formData.destination,
+              startKm: startKmNumber,
+              driverPhoto: photo
+            });
         } else {
-            alert("Harap isi semua kolom.");
+            alert("Harap isi semua kolom dengan benar. Pastikan Kilometer Awal adalah angka lebih dari 0.");
         }
     };
 
@@ -625,7 +687,7 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
                     </div>
                     <div>
                         <label htmlFor="startKm" className="block text-sm font-medium text-slate-700">Kilometer Awal</label>
-                        <input type="number" name="startKm" id="startKm" value={formData.startKm} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+                        <input type="number" name="startKm" id="startKm" value={formData.startKm} onChange={handleChange} required placeholder="0" className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                     </div>
                 </div>
                 <div>
@@ -676,6 +738,25 @@ const EndTripForm: React.FC<{ mutation: Mutation, onSubmit: (data: any) => void,
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <h3 className="text-lg font-semibold text-slate-800 mb-3">Detail Perjalanan</h3>
+                <div className="flex items-start space-x-4">
+                    {mutation.driverPhoto ? (
+                        <img src={mutation.driverPhoto} alt={mutation.driver} className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-md" />
+                    ) : (
+                        <div className="h-20 w-20 rounded-full bg-slate-200 flex items-center justify-center">
+                            <UserIcon className="w-10 h-10 text-slate-400" />
+                        </div>
+                    )}
+                    <div className="text-sm space-y-1.5 text-slate-600">
+                        <p><strong className="font-medium text-slate-800">Pengemudi:</strong> {mutation.driver}</p>
+                        <p><strong className="font-medium text-slate-800">Tujuan:</strong> {mutation.destination}</p>
+                        <p><strong className="font-medium text-slate-800">Waktu Mulai:</strong> {new Date(mutation.startTime).toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                        <p><strong className="font-medium text-slate-800">KM Awal:</strong> {mutation.startKm} km</p>
+                    </div>
+                </div>
+            </div>
+
             <div>
                 <label htmlFor="endKm" className="block text-sm font-medium text-slate-700">Kilometer Akhir</label>
                 <input type="number" name="endKm" id="endKm" value={formData.endKm} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
@@ -761,6 +842,79 @@ const AddVehicleForm: React.FC<{ onSubmit: (data: AddVehicleFormData) => void, o
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
                 <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Simpan Kendaraan</button>
+            </div>
+        </form>
+    );
+};
+
+const EditVehicleForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: Vehicle) => void, onCancel: () => void }> = ({ vehicle, onSubmit, onCancel }) => {
+    const [formData, setFormData] = useState({
+        ...vehicle,
+        year: vehicle.year || new Date().getFullYear(),
+        lastServiceDate: new Date(vehicle.lastServiceDate).toISOString().split('T')[0],
+        lastOilChangeDate: new Date(vehicle.lastOilChangeDate).toISOString().split('T')[0],
+        lastAccuCheckDate: new Date(vehicle.lastAccuCheckDate).toISOString().split('T')[0],
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { name, value, type } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : value }));
+    };
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (formData.plateNumber && formData.brand && formData.year > 1900 && formData.color) {
+            const submissionData: Vehicle = {
+                ...formData,
+                year: Number(formData.year),
+                lastServiceDate: new Date(formData.lastServiceDate).toISOString(),
+                lastOilChangeDate: new Date(formData.lastOilChangeDate).toISOString(),
+                lastAccuCheckDate: new Date(formData.lastAccuCheckDate).toISOString(),
+            };
+            onSubmit(submissionData);
+        } else {
+            alert("Harap isi semua kolom dengan benar.");
+        }
+    };
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="plateNumber" className="block text-sm font-medium text-slate-700">Nomor Polisi</label>
+                <input type="text" name="plateNumber" id="plateNumber" value={formData.plateNumber} onChange={handleChange} placeholder="Contoh: B 1234 ABC" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+            </div>
+            <div>
+                <label htmlFor="brand" className="block text-sm font-medium text-slate-700">Merk & Model</label>
+                <input type="text" name="brand" id="brand" value={formData.brand} onChange={handleChange} placeholder="Contoh: Toyota Avanza" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                  <label htmlFor="year" className="block text-sm font-medium text-slate-700">Tahun</label>
+                  <input type="number" name="year" id="year" value={formData.year} onChange={handleChange} placeholder="Tahun" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+              </div>
+               <div>
+                  <label htmlFor="color" className="block text-sm font-medium text-slate-700">Warna</label>
+                  <input type="text" name="color" id="color" value={formData.color} onChange={handleChange} placeholder="Warna" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+              </div>
+            </div>
+            <div className="pt-4 mt-4 border-t border-slate-200 space-y-4">
+                <h3 className="text-md font-semibold text-slate-800">Data Perawatan</h3>
+                <p className="text-xs text-slate-500 -mt-3">Perbarui tanggal terakhir perawatan dilakukan untuk kendaraan ini.</p>
+                <div>
+                    <label htmlFor="lastServiceDate" className="block text-sm font-medium text-slate-700">Tanggal Servis Terakhir</label>
+                    <input type="date" name="lastServiceDate" id="lastServiceDate" value={formData.lastServiceDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+                </div>
+                <div>
+                    <label htmlFor="lastOilChangeDate" className="block text-sm font-medium text-slate-700">Tanggal Ganti Oli Terakhir</label>
+                    <input type="date" name="lastOilChangeDate" id="lastOilChangeDate" value={formData.lastOilChangeDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+                </div>
+                <div>
+                    <label htmlFor="lastAccuCheckDate" className="block text-sm font-medium text-slate-700">Tanggal Cek Aki Terakhir</label>
+                    <input type="date" name="lastAccuCheckDate" id="lastAccuCheckDate" value={formData.lastAccuCheckDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+                </div>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
+                <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Simpan Perubahan</button>
             </div>
         </form>
     );

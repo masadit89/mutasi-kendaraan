@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Vehicle, VehicleStatus } from '../types';
 import { CarIcon, AlertTriangleIcon, ToolIcon } from './icons';
@@ -66,7 +65,7 @@ const VehicleButton: React.FC<{ vehicle: Vehicle; onSelect: () => void; }> = ({ 
     const baseClasses = "w-full h-32 md:h-40 rounded-lg flex flex-col items-center justify-center p-4 text-white font-bold text-center shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-4";
     const statusClasses = isAvailable 
         ? 'bg-green-500 hover:bg-green-600 focus:ring-green-300' 
-        : 'bg-orange-500 hover:bg-orange-600 focus:ring-orange-300';
+        : 'bg-red-600 hover:bg-red-700 focus:ring-red-300';
 
     return (
         <button 

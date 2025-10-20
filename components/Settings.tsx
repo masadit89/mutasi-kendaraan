@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Vehicle, User, Role } from '../types';
 import { PlusIcon, SettingsIcon, UserIcon, EditIcon, TrashIcon, KeyIcon } from './icons';
@@ -6,6 +5,8 @@ import { PlusIcon, SettingsIcon, UserIcon, EditIcon, TrashIcon, KeyIcon } from '
 interface SettingsProps {
     vehicles: Vehicle[];
     onAddVehicle: () => void;
+    onEditVehicle: (vehicle: Vehicle) => void;
+    onDeleteVehicle: (vehicleId: string) => void;
     users: User[];
     onAddUser: () => void;
     currentUser: User | null;
@@ -23,7 +24,7 @@ const formatDateSimple = (dateString?: string) => {
     });
 };
 
-export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, users, onAddUser, currentUser, onEditUser, onChangePassword, onDeleteUser }) => {
+export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEditVehicle, onDeleteVehicle, users, onAddUser, currentUser, onEditUser, onChangePassword, onDeleteUser }) => {
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <div className="flex flex-wrap justify-between items-center gap-4">
@@ -56,6 +57,7 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, user
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Ganti Oli</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Cek Aki</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">
@@ -70,6 +72,16 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, user
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${vehicle.status === 'Tersedia' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                                 {vehicle.status}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex items-center space-x-2">
+                                                <button onClick={() => onEditVehicle(vehicle)} className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-100 rounded-full transition-colors" title="Edit Kendaraan">
+                                                    <EditIcon className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => onDeleteVehicle(vehicle.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Hapus Kendaraan">
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
