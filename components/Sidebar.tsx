@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { CarIcon, HomeIcon, HistoryIcon, SettingsIcon, LogoutIcon } from './icons';
+import { HomeIcon, HistoryIcon, SettingsIcon, LogoutIcon } from './icons';
 import { User, Role } from '../types';
 
 type View = 'dashboard' | 'logs' | 'settings';
@@ -47,13 +46,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen
         }`}
       >
         <div className="flex-grow">
-            <div className="flex items-center space-x-3 mb-8 px-2">
-                <div className="p-3 bg-green-600 text-white rounded-lg">
-                    <CarIcon className="h-6 w-6"/>
-                </div>
-                <h1 className="text-xl font-bold text-white">
-                    Sistem Mutasi
-                </h1>
+            <div className="flex justify-center items-center mb-8 px-2">
+                <img src="https://gembiralokazoo.com/storage/about/HontizxOKlzXRY3IuUlY6wGXZUqtYW5VRMkrgTxt.png" alt="Gembira Loka Zoo Logo" className="w-40 h-auto" />
             </div>
 
             <nav className="space-y-2">
@@ -87,6 +81,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen
                 <LogoutIcon className="w-6 h-6" />
                 <span className="font-semibold">Keluar</span>
             </button>
+            <p className="text-center text-xs text-green-300/50 pt-4">
+                Copyright &copy; {new Date().getFullYear()} Bison
+            </p>
         </div>
       </aside>
       {/* Overlay for mobile view */}

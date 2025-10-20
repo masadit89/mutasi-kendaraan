@@ -78,8 +78,8 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ reportId, mutations,
     }
     
     return (
-        <div className="min-h-screen bg-slate-100 p-4 sm:p-8 flex justify-center">
-            <div className="w-full max-w-4xl bg-white rounded-lg shadow-2xl p-6 sm:p-8">
+        <div className="min-h-screen bg-slate-100 p-4 sm:p-8">
+            <div className="w-full max-w-4xl mx-auto bg-white rounded-lg shadow-2xl p-6 sm:p-8">
                 {/* Header */}
                 <header className="flex flex-col sm:flex-row justify-between items-start pb-6 border-b-2 border-slate-200 mb-6">
                     <div>
@@ -160,6 +160,9 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ reportId, mutations,
                     </aside>
                 </main>
             </div>
+            <p className="text-center text-xs text-slate-500 mt-6">
+                Copyright &copy; {new Date().getFullYear()} Bison
+            </p>
         </div>
     );
 };

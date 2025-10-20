@@ -86,7 +86,7 @@ export const VehicleList: React.FC<VehicleListProps> = ({ vehicles, onVehicleSel
         <MaintenanceAlerts alerts={maintenanceAlerts} onUpdateMaintenance={onOpenMaintenanceModal} />
 
         <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">Dashboard Operasional</h2>
+            <h2 className="text-2xl font-bold text-slate-800">Dashboard Kendaraan GLZoo</h2>
             <p className="text-slate-600">Pilih kendaraan untuk memulai atau menyelesaikan perjalanan.</p>
         </div>
         

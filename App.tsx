@@ -187,13 +187,14 @@ function App() {
     setSelectedUser(null);
   };
 
-  const handleStartTrip = async (formData: { driver: string; destination: string; startKm: number; driverPhoto: string; }) => {
+  const handleStartTrip = async (formData: { driver: string; destination: string; startKm: string; driverPhoto: string; }) => {
     if (!selectedVehicle) return;
     
     const newMutation: Mutation = {
       id: `m${Date.now()}`,
       vehicleId: selectedVehicle.id,
       ...formData,
+      startKm: parseInt(formData.startKm, 10),
       startTime: new Date().toISOString(),
       status: MutationStatus.ONGOING
     };
@@ -565,13 +566,12 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
             <div className="absolute inset-0 bg-black bg-opacity-50"></div>
             <div className="relative max-w-md w-full mx-auto z-10">
                 <div className="flex justify-center items-center mb-6">
-                    <div className="p-4 bg-green-500 text-white rounded-lg shadow-lg">
-                        <CarIcon className="h-8 w-8"/>
-                    </div>
+                    <img src="https://gembiralokazoo.com/storage/about/HontizxOKlzXRY3IuUlY6wGXZUqtYW5VRMkrgTxt.png" alt="Gembira Loka Zoo Logo" className="h-20 w-auto object-contain" />
                 </div>
-                <h1 className="text-3xl font-bold text-center text-white mb-2 drop-shadow-md">Sistem Mutasi Kendaraan</h1>
-                <p className="text-center text-green-200 mb-8 drop-shadow-md">Silakan masuk untuk melanjutkan</p>
+                
                 <div className="bg-white p-8 rounded-lg shadow-lg">
+                     <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">Sistem Mutasi Kendaraan</h1>
+                     <p className="text-center text-slate-500 mb-6">Silakan masuk untuk melanjutkan</p>
                     {isInitialSetup && (
                         <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm p-4 rounded-md mb-6">
                             <p><span className="font-bold">Setup Awal:</span> Sheet pengguna Anda kosong.</p>
@@ -599,11 +599,12 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
                     </form>
                 </div>
             </div>
+             <p className="absolute bottom-4 text-xs text-white/60 z-10">Copyright &copy; {new Date().getFullYear()} Bison</p>
         </div>
     );
 };
 
-const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void, onCancel: () => void }> = ({ onSubmit, onCancel }) => {
+const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: { driver: string; destination: string; startKm: string; driverPhoto: string; }) => void, onCancel: () => void }> = ({ onSubmit, onCancel }) => {
     const [formData, setFormData] = useState({ driver: '', destination: '', startKm: '' });
     const [photo, setPhoto] = useState<string | null>(null);
     const [isCameraOn, setIsCameraOn] = useState(false);
@@ -650,6 +651,7 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
+        // Allow only numbers for startKm, but keep it as a string for input control
         const updatedValue = name === 'startKm' ? value.replace(/[^0-9]/g, '') : value;
         setFormData(prev => ({ ...prev, [name]: updatedValue }));
     };
@@ -661,15 +663,15 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
             return;
         }
         const startKmNumber = parseInt(formData.startKm, 10);
-        if (formData.driver && formData.destination && !isNaN(startKmNumber) && startKmNumber > 0) {
+        if (formData.driver && formData.destination && !isNaN(startKmNumber) && formData.startKm.length > 0) {
             onSubmit({
               driver: formData.driver,
               destination: formData.destination,
-              startKm: startKmNumber,
+              startKm: formData.startKm, // Send as string to preserve leading zeros if needed, parse in handler
               driverPhoto: photo
             });
         } else {
-            alert("Harap isi semua kolom dengan benar. Pastikan Kilometer Awal adalah angka lebih dari 0.");
+            alert("Harap isi semua kolom dengan benar. Pastikan Kilometer Awal adalah angka yang valid.");
         }
     };
 
@@ -687,7 +689,7 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
                     </div>
                     <div>
                         <label htmlFor="startKm" className="block text-sm font-medium text-slate-700">Kilometer Awal</label>
-                        <input type="number" name="startKm" id="startKm" value={formData.startKm} onChange={handleChange} required placeholder="0" className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+                        <input type="text" inputMode="numeric" pattern="[0-9]*" name="startKm" id="startKm" value={formData.startKm} onChange={handleChange} required placeholder="0" className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                     </div>
                 </div>
                 <div>
