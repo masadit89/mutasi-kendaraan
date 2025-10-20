@@ -35,7 +35,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         onClick={(e) => e.stopPropagation()}
         style={{ animation: 'fadeInUp 0.3s ease-out forwards' }}
       >
-        <div className="p-5 border-b flex justify-between items-center bg-slate-50 rounded-t-lg">
+        <div className="p-5 border-b flex justify-between items-center bg-green-50 rounded-t-lg">
           <h2 className="text-xl font-semibold text-slate-800">{title}</h2>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-800 p-1 rounded-full hover:bg-slate-200 transition-colors">
             <XIcon className="h-5 w-5" />

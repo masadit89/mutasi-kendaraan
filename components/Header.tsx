@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MenuIcon, UserIcon } from './icons';
 import { User } from '../types';
@@ -29,8 +30,8 @@ export const Header: React.FC<HeaderProps> = ({ onMenuClick, currentUser }) => {
                     <p className="text-sm font-semibold text-slate-800">{currentUser.username}</p>
                     <p className="text-xs text-slate-500">{currentUser.role}</p>
                 </div>
-                <div className="p-2 bg-slate-100 rounded-full">
-                    <UserIcon className="w-5 h-5 text-slate-600"/>
+                <div className="p-2 bg-green-100 rounded-full">
+                    <UserIcon className="w-5 h-5 text-green-700"/>
                 </div>
             </div>
         )}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Vehicle, VehicleStatus } from '../types';
 import { CarIcon, AlertTriangleIcon, ToolIcon } from './icons';
@@ -21,14 +22,14 @@ const MaintenanceAlerts: React.FC<{ alerts: MaintenanceAlert[]; onUpdateMaintena
     }, {} as Record<string, { vehicle: Vehicle, reasons: string[] }>);
 
     return (
-        <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm">
+        <div className="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg shadow-sm">
             <div className="flex">
                 <div className="py-1">
-                    <AlertTriangleIcon className="h-6 w-6 text-yellow-500 mr-4" />
+                    <AlertTriangleIcon className="h-6 w-6 text-orange-500 mr-4" />
                 </div>
                 <div className="w-full">
-                    <h3 className="font-bold text-yellow-800">Peringatan Perawatan Kendaraan</h3>
-                    <ul className="mt-2 text-sm text-yellow-700 space-y-2">
+                    <h3 className="font-bold text-orange-800">Peringatan Perawatan Kendaraan</h3>
+                    <ul className="mt-2 text-sm text-orange-700 space-y-2">
                         {Object.values(alertsByVehicle).map(({ vehicle, reasons }) => (
                             <li key={vehicle.id} className="flex justify-between items-center">
                                 <span>
@@ -36,7 +37,7 @@ const MaintenanceAlerts: React.FC<{ alerts: MaintenanceAlert[]; onUpdateMaintena
                                 </span>
                                 <button 
                                   onClick={() => onUpdateMaintenance(vehicle)}
-                                  className="flex items-center gap-1.5 text-xs bg-yellow-400 hover:bg-yellow-500 text-yellow-900 font-semibold px-2 py-1 rounded-md transition-colors"
+                                  className="flex items-center gap-1.5 text-xs bg-orange-400 hover:bg-orange-500 text-orange-900 font-semibold px-2 py-1 rounded-md transition-colors"
                                   aria-label={`Perbarui data perawatan untuk ${vehicle.brand}`}
                                 >
                                   <ToolIcon className="w-3 h-3"/>
@@ -64,8 +65,8 @@ const VehicleButton: React.FC<{ vehicle: Vehicle; onSelect: () => void; }> = ({ 
     
     const baseClasses = "w-full h-32 md:h-40 rounded-lg flex flex-col items-center justify-center p-4 text-white font-bold text-center shadow-lg transition-all duration-300 transform hover:scale-105 hover:shadow-2xl focus:outline-none focus:ring-4";
     const statusClasses = isAvailable 
-        ? 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-300' 
-        : 'bg-amber-500 hover:bg-amber-600 focus:ring-amber-300';
+        ? 'bg-green-500 hover:bg-green-600 focus:ring-green-300' 
+        : 'bg-orange-500 hover:bg-orange-600 focus:ring-orange-300';
 
     return (
         <button 

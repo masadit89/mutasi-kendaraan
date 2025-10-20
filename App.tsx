@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -7,7 +8,7 @@ import { Settings } from './components/Settings';
 import { Modal } from './components/Modal';
 import { Vehicle, Mutation, VehicleStatus, MutationStatus, User, Role } from './types';
 import { GoogleGenAI } from "@google/genai";
-import { CameraIcon } from './components/icons';
+import { CameraIcon, CarIcon } from './components/icons';
 import { ApiConfigModal } from './components/ApiConfigModal';
 import { Loader } from './components/Loader';
 import { GOOGLE_SCRIPT_URL } from './config';
@@ -395,7 +396,7 @@ function App() {
   
   if (isLoading) {
       return (
-          <div className="flex h-screen bg-slate-100 items-center justify-center">
+          <div className="flex h-screen items-center justify-center">
               <Loader message="Menghubungkan ke Google Sheets..." />
           </div>
       );
@@ -403,13 +404,13 @@ function App() {
 
   if (error) {
       return (
-          <div className="flex h-screen bg-slate-100 items-center justify-center p-4">
+          <div className="flex h-screen items-center justify-center p-4">
               <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-lg">
                   <h2 className="text-xl font-bold text-red-600 mb-4">Terjadi Kesalahan</h2>
                   <p className="text-slate-600 mb-6">{error}</p>
                   <button 
                     onClick={() => window.location.reload()}
-                    className="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700"
+                    className="bg-green-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-green-700"
                   >
                     Coba Lagi
                   </button>
@@ -424,7 +425,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-slate-100">
+    <div className="flex h-screen">
       <Sidebar 
         activeView={activeView} 
         onNavigate={setActiveView}
@@ -502,15 +503,19 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex flex-col justify-center items-center p-4">
-            <div className="max-w-md w-full mx-auto">
+        <div 
+            className="min-h-screen flex flex-col justify-center items-center p-4 bg-cover bg-center relative"
+            style={{ backgroundImage: "url('https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=2070&auto=format&fit=crop')" }}
+        >
+            <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+            <div className="relative max-w-md w-full mx-auto z-10">
                 <div className="flex justify-center items-center mb-6">
-                    <div className="p-4 bg-indigo-600 text-white rounded-lg shadow-lg">
-                        <CameraIcon className="h-8 w-8"/>
+                    <div className="p-4 bg-green-500 text-white rounded-lg shadow-lg">
+                        <CarIcon className="h-8 w-8"/>
                     </div>
                 </div>
-                <h1 className="text-3xl font-bold text-center text-slate-800 mb-2">Sistem Mutasi Kendaraan</h1>
-                <p className="text-center text-slate-600 mb-8">Silakan masuk untuk melanjutkan</p>
+                <h1 className="text-3xl font-bold text-center text-white mb-2 drop-shadow-md">Sistem Mutasi Kendaraan</h1>
+                <p className="text-center text-green-200 mb-8 drop-shadow-md">Silakan masuk untuk melanjutkan</p>
                 <div className="bg-white p-8 rounded-lg shadow-lg">
                     {isInitialSetup && (
                         <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm p-4 rounded-md mb-6">
@@ -524,15 +529,15 @@ const LoginScreen: React.FC<{ onLogin: (u: string, p: string) => boolean; error:
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-slate-700">Username</label>
-                            <input type="text" name="username" id="username" value={username} onChange={e => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                            <input type="text" name="username" id="username" value={username} onChange={e => setUsername(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                         </div>
                         <div>
                             <label htmlFor="password" className="block text-sm font-medium text-slate-700">Password</label>
-                            <input type="password" name="password" id="password" value={password} onChange={e => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                            <input type="password" name="password" id="password" value={password} onChange={e => setPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                         </div>
                         {error && <p className="text-sm text-red-600">{error}</p>}
                         <div>
-                            <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-indigo-400">
+                            <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:bg-green-400">
                                 {isLoading ? 'Memproses...' : 'Masuk'}
                             </button>
                         </div>
@@ -612,15 +617,15 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
                 <div className="space-y-4">
                     <div>
                         <label htmlFor="driver" className="block text-sm font-medium text-slate-700">Nama Pengemudi</label>
-                        <input type="text" name="driver" id="driver" value={formData.driver} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                        <input type="text" name="driver" id="driver" value={formData.driver} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                     </div>
                     <div>
                         <label htmlFor="destination" className="block text-sm font-medium text-slate-700">Tujuan</label>
-                        <input type="text" name="destination" id="destination" value={formData.destination} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                        <input type="text" name="destination" id="destination" value={formData.destination} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                     </div>
                     <div>
                         <label htmlFor="startKm" className="block text-sm font-medium text-slate-700">Kilometer Awal</label>
-                        <input type="number" name="startKm" id="startKm" value={formData.startKm} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                        <input type="number" name="startKm" id="startKm" value={formData.startKm} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                     </div>
                 </div>
                 <div>
@@ -638,7 +643,7 @@ const StartTripForm: React.FC<{ vehicle: Vehicle, onSubmit: (data: any) => void,
             </div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
-                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Mulai Perjalanan</button>
+                <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Mulai Perjalanan</button>
             </div>
         </form>
     )
@@ -673,16 +678,16 @@ const EndTripForm: React.FC<{ mutation: Mutation, onSubmit: (data: any) => void,
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="endKm" className="block text-sm font-medium text-slate-700">Kilometer Akhir</label>
-                <input type="number" name="endKm" id="endKm" value={formData.endKm} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                <input type="number" name="endKm" id="endKm" value={formData.endKm} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
             </div>
             <div>
                 <div className="flex justify-between items-center">
                     <label htmlFor="notes" className="block text-sm font-medium text-slate-700">Catatan Perjalanan</label>
-                    <button type="button" onClick={handleGenerateNotes} disabled={isGenerating} className="text-xs text-indigo-600 hover:underline mb-1 disabled:opacity-50 disabled:cursor-wait">
+                    <button type="button" onClick={handleGenerateNotes} disabled={isGenerating} className="text-xs text-green-600 hover:underline mb-1 disabled:opacity-50 disabled:cursor-wait">
                         {isGenerating ? 'Membuat...' : 'Buat catatan dengan AI'}
                     </button>
                 </div>
-                <textarea name="notes" id="notes" value={formData.notes} onChange={handleChange} rows={4} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder={isGenerating ? 'AI sedang menulis catatan...' : 'Tulis catatan atau buat dengan AI...'}></textarea>
+                <textarea name="notes" id="notes" value={formData.notes} onChange={handleChange} rows={4} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm" placeholder={isGenerating ? 'AI sedang menulis catatan...' : 'Tulis catatan atau buat dengan AI...'}></textarea>
             </div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
@@ -721,20 +726,20 @@ const AddVehicleForm: React.FC<{ onSubmit: (data: AddVehicleFormData) => void, o
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="plateNumber" className="block text-sm font-medium text-slate-700">Nomor Polisi</label>
-                <input type="text" name="plateNumber" id="plateNumber" value={formData.plateNumber} onChange={handleChange} placeholder="Contoh: B 1234 ABC" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                <input type="text" name="plateNumber" id="plateNumber" value={formData.plateNumber} onChange={handleChange} placeholder="Contoh: B 1234 ABC" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
             </div>
             <div>
                 <label htmlFor="brand" className="block text-sm font-medium text-slate-700">Merk & Model</label>
-                <input type="text" name="brand" id="brand" value={formData.brand} onChange={handleChange} placeholder="Contoh: Toyota Avanza" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                <input type="text" name="brand" id="brand" value={formData.brand} onChange={handleChange} placeholder="Contoh: Toyota Avanza" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                   <label htmlFor="year" className="block text-sm font-medium text-slate-700">Tahun</label>
-                  <input type="number" name="year" id="year" value={formData.year} onChange={handleChange} placeholder="Tahun" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                  <input type="number" name="year" id="year" value={formData.year} onChange={handleChange} placeholder="Tahun" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
               </div>
                <div>
                   <label htmlFor="color" className="block text-sm font-medium text-slate-700">Warna</label>
-                  <input type="text" name="color" id="color" value={formData.color} onChange={handleChange} placeholder="Warna" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                  <input type="text" name="color" id="color" value={formData.color} onChange={handleChange} placeholder="Warna" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-slate-200 space-y-4">
@@ -742,20 +747,20 @@ const AddVehicleForm: React.FC<{ onSubmit: (data: AddVehicleFormData) => void, o
                 <p className="text-xs text-slate-500 -mt-3">Masukkan tanggal terakhir perawatan dilakukan untuk kendaraan ini.</p>
                 <div>
                     <label htmlFor="lastServiceDate" className="block text-sm font-medium text-slate-700">Tanggal Servis Terakhir</label>
-                    <input type="date" name="lastServiceDate" id="lastServiceDate" value={formData.lastServiceDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                    <input type="date" name="lastServiceDate" id="lastServiceDate" value={formData.lastServiceDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                 </div>
                 <div>
                     <label htmlFor="lastOilChangeDate" className="block text-sm font-medium text-slate-700">Tanggal Ganti Oli Terakhir</label>
-                    <input type="date" name="lastOilChangeDate" id="lastOilChangeDate" value={formData.lastOilChangeDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                    <input type="date" name="lastOilChangeDate" id="lastOilChangeDate" value={formData.lastOilChangeDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                 </div>
                 <div>
                     <label htmlFor="lastAccuCheckDate" className="block text-sm font-medium text-slate-700">Tanggal Cek Aki Terakhir</label>
-                    <input type="date" name="lastAccuCheckDate" id="lastAccuCheckDate" value={formData.lastAccuCheckDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                    <input type="date" name="lastAccuCheckDate" id="lastAccuCheckDate" value={formData.lastAccuCheckDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
                 </div>
             </div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
-                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Kendaraan</button>
+                <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Simpan Kendaraan</button>
             </div>
         </form>
     );
@@ -777,15 +782,15 @@ const AddUserForm: React.FC<{ onSubmit: (data: any) => void, onCancel: () => voi
     };
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-            <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-            <select name="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+            <input type="text" name="username" value={formData.username} onChange={handleChange} placeholder="Username" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+            <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Password" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
+            <select name="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white">
                 <option value={Role.OPERATOR}>Operator</option>
                 <option value={Role.ADMIN}>Admin</option>
             </select>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
-                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Pengguna</button>
+                <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Simpan Pengguna</button>
             </div>
         </form>
     );
@@ -813,13 +818,13 @@ const UpdateMaintenanceForm: React.FC<{ vehicle: Vehicle, onUpdate: (vehicleId: 
                 </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <button onClick={() => onUpdate(vehicle.id, 'service')} className="w-full bg-indigo-100 text-indigo-700 font-semibold px-4 py-2 rounded-lg hover:bg-indigo-200 transition-colors">
+                <button onClick={() => onUpdate(vehicle.id, 'service')} className="w-full bg-green-100 text-green-700 font-semibold px-4 py-2 rounded-lg hover:bg-green-200 transition-colors">
                     Tandai Servis Selesai
                 </button>
-                 <button onClick={() => onUpdate(vehicle.id, 'oil')} className="w-full bg-sky-100 text-sky-700 font-semibold px-4 py-2 rounded-lg hover:bg-sky-200 transition-colors">
+                 <button onClick={() => onUpdate(vehicle.id, 'oil')} className="w-full bg-orange-100 text-orange-700 font-semibold px-4 py-2 rounded-lg hover:bg-orange-200 transition-colors">
                     Tandai Ganti Oli Selesai
                 </button>
-                 <button onClick={() => onUpdate(vehicle.id, 'accu')} className="w-full bg-emerald-100 text-emerald-700 font-semibold px-4 py-2 rounded-lg hover:bg-emerald-200 transition-colors">
+                 <button onClick={() => onUpdate(vehicle.id, 'accu')} className="w-full bg-teal-100 text-teal-700 font-semibold px-4 py-2 rounded-lg hover:bg-teal-200 transition-colors">
                     Tandai Cek Aki Selesai
                 </button>
             </div>
@@ -848,18 +853,18 @@ const EditUserForm: React.FC<{ user: User, onSubmit: (userId: string, data: any)
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="username" className="block text-sm font-medium text-slate-700">Username</label>
-                <input type="text" name="username" id="username" value={formData.username} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                <input type="text" name="username" id="username" value={formData.username} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
             </div>
             <div>
                 <label htmlFor="role" className="block text-sm font-medium text-slate-700">Role</label>
-                <select name="role" id="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+                <select name="role" id="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm bg-white">
                     <option value={Role.OPERATOR}>Operator</option>
                     <option value={Role.ADMIN}>Admin</option>
                 </select>
             </div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
-                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Perubahan</button>
+                <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Simpan Perubahan</button>
             </div>
         </form>
     );
@@ -879,11 +884,11 @@ const ChangePasswordForm: React.FC<{ user: User, onSubmit: (userId: string, newP
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label htmlFor="newPassword" className="block text-sm font-medium text-slate-700">Password Baru</label>
-                <input type="password" name="newPassword" id="newPassword" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                <input type="password" name="newPassword" id="newPassword" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"/>
             </div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
-                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Password</button>
+                <button type="submit" className="bg-green-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-green-700">Simpan Password</button>
             </div>
         </form>
     );

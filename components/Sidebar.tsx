@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { CarIcon, HomeIcon, HistoryIcon, SettingsIcon, LogoutIcon } from './icons';
 import { User, Role } from '../types';
@@ -23,8 +24,8 @@ const NavLink: React.FC<{
     onClick={onClick}
     className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 ${
       isActive
-        ? 'bg-indigo-600 text-white shadow-lg'
-        : 'text-slate-200 hover:bg-slate-700 hover:text-white'
+        ? 'bg-green-600 text-white shadow-lg'
+        : 'text-green-100 hover:bg-green-700 hover:text-white'
     }`}
   >
     {icon}
@@ -41,13 +42,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen
   return (
     <>
       <aside
-        className={`fixed md:relative top-0 left-0 z-50 w-64 h-full bg-slate-800 text-white p-4 flex-shrink-0 flex flex-col transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed md:relative top-0 left-0 z-50 w-64 h-full bg-green-800 text-white p-4 flex-shrink-0 flex flex-col transform transition-transform duration-300 ease-in-out md:translate-x-0 ${
           isOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}
       >
         <div className="flex-grow">
             <div className="flex items-center space-x-3 mb-8 px-2">
-                <div className="p-3 bg-indigo-600 text-white rounded-lg">
+                <div className="p-3 bg-green-600 text-white rounded-lg">
                     <CarIcon className="h-6 w-6"/>
                 </div>
                 <h1 className="text-xl font-bold text-white">
@@ -81,7 +82,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen
         <div className="mt-auto">
              <button
                 onClick={onLogout}
-                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 text-slate-200 hover:bg-red-600 hover:text-white"
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors duration-200 text-green-100 hover:bg-orange-600 hover:text-white"
             >
                 <LogoutIcon className="w-6 h-6" />
                 <span className="font-semibold">Keluar</span>

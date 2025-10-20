@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ServerIcon } from './icons'; 
 
@@ -151,8 +152,8 @@ function doPost(e) {
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl my-8 transform transition-all">
         <div className="p-6 border-b">
             <div className="flex items-center">
-                <div className="p-3 bg-indigo-100 rounded-full mr-4">
-                    <ServerIcon className="w-6 h-6 text-indigo-600"/>
+                <div className="p-3 bg-green-100 rounded-full mr-4">
+                    <ServerIcon className="w-6 h-6 text-green-600"/>
                 </div>
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800">Konfigurasi Database Google Sheets</h2>
@@ -165,7 +166,7 @@ function doPost(e) {
             <div>
                 <h3 className="font-bold text-lg mb-2">Langkah 1: Siapkan Google Sheet Anda</h3>
                  <ol className="list-decimal list-inside space-y-2 pl-4">
-                    <li>Buka <a href="https://sheets.google.com" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">Google Sheets</a> dan buat spreadsheet baru. Beri nama "Database Mutasi Kendaraan".</li>
+                    <li>Buka <a href="https://sheets.google.com" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">Google Sheets</a> dan buat spreadsheet baru. Beri nama "Database Mutasi Kendaraan".</li>
                     <li>Buat tiga sheet (tab) dengan nama persis: <code className="bg-slate-200 p-1 rounded">Vehicles</code>, <code className="bg-slate-200 p-1 rounded">Mutations</code>, dan <code className="bg-slate-200 p-1 rounded">Users</code>.</li>
                     <li>Salin header berikut ke baris pertama di setiap sheet yang sesuai.</li>
                 </ol>
