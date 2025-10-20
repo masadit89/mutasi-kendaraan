@@ -33,9 +33,16 @@ const initialUsers: User[] = [
 ];
 
 type View = 'dashboard' | 'logs' | 'settings';
-type ModalType = null | 'start-trip' | 'end-trip' | 'add-vehicle' | 'add-user' | 'update-maintenance';
+type ModalType = null | 'start-trip' | 'end-trip' | 'add-vehicle' | 'add-user' | 'update-maintenance' | 'edit-user' | 'change-password';
 interface MaintenanceAlert { vehicle: Vehicle; reason: string; }
 type MaintenanceType = 'service' | 'oil' | 'accu';
+
+type AddVehicleFormData = Omit<Vehicle, 'id' | 'status' | 'lastServiceDate' | 'lastOilChangeDate' | 'lastAccuCheckDate'> & {
+    lastServiceDate: string; // YYYY-MM-DD format from input
+    lastOilChangeDate: string;
+    lastAccuCheckDate: string;
+};
+
 
 function App() {
   const [vehicles, setVehicles] = useLocalStorage<Vehicle[]>('vehicles', initialVehicles);
@@ -47,6 +54,7 @@ function App() {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedMutation, setSelectedMutation] = useState<Mutation | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [maintenanceAlerts, setMaintenanceAlerts] = useState<MaintenanceAlert[]>([]);
@@ -116,6 +124,7 @@ function App() {
     setActiveModal(null);
     setSelectedVehicle(null);
     setSelectedMutation(null);
+    setSelectedUser(null);
   };
 
   const handleStartTrip = (formData: { driver: string; destination: string; startKm: number; driverPhoto: string; }) => {
@@ -152,15 +161,17 @@ function App() {
     closeModal();
   };
   
-  const handleCreateVehicle = (formData: Omit<Vehicle, 'id' | 'status' | 'lastServiceDate' | 'lastOilChangeDate' | 'lastAccuCheckDate'>) => {
-    const today = new Date().toISOString();
+  const handleCreateVehicle = (formData: AddVehicleFormData) => {
     const newVehicle: Vehicle = {
         id: `v${Date.now()}`,
-        ...formData,
+        plateNumber: formData.plateNumber,
+        brand: formData.brand,
+        year: formData.year,
+        color: formData.color,
         status: VehicleStatus.AVAILABLE,
-        lastServiceDate: today,
-        lastOilChangeDate: today,
-        lastAccuCheckDate: today,
+        lastServiceDate: new Date(formData.lastServiceDate).toISOString(),
+        lastOilChangeDate: new Date(formData.lastOilChangeDate).toISOString(),
+        lastAccuCheckDate: new Date(formData.lastAccuCheckDate).toISOString(),
     };
     setVehicles(prev => [...prev, newVehicle]);
     closeModal();
@@ -187,6 +198,38 @@ function App() {
     }));
     closeModal();
   };
+
+  // User Management Handlers
+  const handleOpenEditUserModal = (user: User) => {
+    setSelectedUser(user);
+    setActiveModal('edit-user');
+  };
+
+  const handleOpenChangePasswordModal = (user: User) => {
+    setSelectedUser(user);
+    setActiveModal('change-password');
+  };
+
+  const handleDeleteUser = (userId: string) => {
+    if (userId === currentUser?.id) {
+      alert("Anda tidak dapat menghapus akun Anda sendiri.");
+      return;
+    }
+    if (window.confirm("Apakah Anda yakin ingin menghapus pengguna ini?")) {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+    }
+  };
+
+  const handleUpdateUser = (userId: string, formData: { username: string; role: Role; }) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...formData } : u));
+    closeModal();
+  };
+
+  const handleChangePassword = (userId: string, newPassword: string) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, password: newPassword } : u));
+    closeModal();
+  };
+
 
   const generateAINotes = async (mutation: Mutation | null): Promise<string> => {
     if (!mutation) return "Informasi perjalanan tidak ditemukan.";
@@ -217,7 +260,14 @@ function App() {
         return <MutationLog mutations={mutations} vehicles={vehicles} />;
       case 'settings':
         if (currentUser?.role === Role.ADMIN) {
-          return <Settings vehicles={vehicles} onAddVehicle={() => setActiveModal('add-vehicle')} users={users} onAddUser={() => setActiveModal('add-user')} />;
+          return <Settings 
+            vehicles={vehicles} onAddVehicle={() => setActiveModal('add-vehicle')} 
+            users={users} onAddUser={() => setActiveModal('add-user')} 
+            currentUser={currentUser}
+            onEditUser={handleOpenEditUserModal}
+            onChangePassword={handleOpenChangePasswordModal}
+            onDeleteUser={handleDeleteUser}
+          />;
         }
         return <div className="p-8 text-center text-slate-500">Anda tidak memiliki hak akses untuk halaman ini.</div>;
       default:
@@ -274,6 +324,16 @@ function App() {
                   onUpdate={handleUpdateMaintenance} 
                   onCancel={closeModal} 
                 />
+            </Modal>
+        )}
+        {activeModal === 'edit-user' && selectedUser && (
+            <Modal isOpen={true} onClose={closeModal} title={`Edit Pengguna - ${selectedUser.username}`}>
+                <EditUserForm user={selectedUser} onSubmit={handleUpdateUser} onCancel={closeModal} />
+            </Modal>
+        )}
+        {activeModal === 'change-password' && selectedUser && (
+            <Modal isOpen={true} onClose={closeModal} title={`Ganti Password - ${selectedUser.username}`}>
+                <ChangePasswordForm user={selectedUser} onSubmit={handleChangePassword} onCancel={closeModal} />
             </Modal>
         )}
       </div>
@@ -477,12 +537,23 @@ const EndTripForm: React.FC<{ mutation: Mutation, onSubmit: (data: any) => void,
     )
 }
 
-const AddVehicleForm: React.FC<{ onSubmit: (data: any) => void, onCancel: () => void }> = ({ onSubmit, onCancel }) => {
-    const [formData, setFormData] = useState({ plateNumber: '', brand: '', year: new Date().getFullYear(), color: '' });
+const AddVehicleForm: React.FC<{ onSubmit: (data: AddVehicleFormData) => void, onCancel: () => void }> = ({ onSubmit, onCancel }) => {
+    const todayISO = new Date().toISOString().split('T')[0];
+    const [formData, setFormData] = useState({
+        plateNumber: '',
+        brand: '',
+        year: new Date().getFullYear(),
+        color: '',
+        lastServiceDate: todayISO,
+        lastOilChangeDate: todayISO,
+        lastAccuCheckDate: todayISO,
+    });
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type } = e.target;
         setFormData(prev => ({ ...prev, [name]: type === 'number' ? parseInt(value) || 0 : value }));
     };
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (formData.plateNumber && formData.brand && formData.year > 1900 && formData.color) {
@@ -493,10 +564,40 @@ const AddVehicleForm: React.FC<{ onSubmit: (data: any) => void, onCancel: () => 
     };
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
-            <input type="text" name="plateNumber" value={formData.plateNumber} onChange={handleChange} placeholder="Nomor Polisi" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-            <input type="text" name="brand" value={formData.brand} onChange={handleChange} placeholder="Merk & Model" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-            <input type="number" name="year" value={formData.year} onChange={handleChange} placeholder="Tahun" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
-            <input type="text" name="color" value={formData.color} onChange={handleChange} placeholder="Warna" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+            <div>
+                <label htmlFor="plateNumber" className="block text-sm font-medium text-slate-700">Nomor Polisi</label>
+                <input type="text" name="plateNumber" id="plateNumber" value={formData.plateNumber} onChange={handleChange} placeholder="Contoh: B 1234 ABC" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+            </div>
+            <div>
+                <label htmlFor="brand" className="block text-sm font-medium text-slate-700">Merk & Model</label>
+                <input type="text" name="brand" id="brand" value={formData.brand} onChange={handleChange} placeholder="Contoh: Toyota Avanza" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                  <label htmlFor="year" className="block text-sm font-medium text-slate-700">Tahun</label>
+                  <input type="number" name="year" id="year" value={formData.year} onChange={handleChange} placeholder="Tahun" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+              </div>
+               <div>
+                  <label htmlFor="color" className="block text-sm font-medium text-slate-700">Warna</label>
+                  <input type="text" name="color" id="color" value={formData.color} onChange={handleChange} placeholder="Warna" required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+              </div>
+            </div>
+            <div className="pt-4 mt-4 border-t border-slate-200 space-y-4">
+                <h3 className="text-md font-semibold text-slate-800">Data Perawatan Awal</h3>
+                <p className="text-xs text-slate-500 -mt-3">Masukkan tanggal terakhir perawatan dilakukan untuk kendaraan ini.</p>
+                <div>
+                    <label htmlFor="lastServiceDate" className="block text-sm font-medium text-slate-700">Tanggal Servis Terakhir</label>
+                    <input type="date" name="lastServiceDate" id="lastServiceDate" value={formData.lastServiceDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                </div>
+                <div>
+                    <label htmlFor="lastOilChangeDate" className="block text-sm font-medium text-slate-700">Tanggal Ganti Oli Terakhir</label>
+                    <input type="date" name="lastOilChangeDate" id="lastOilChangeDate" value={formData.lastOilChangeDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                </div>
+                <div>
+                    <label htmlFor="lastAccuCheckDate" className="block text-sm font-medium text-slate-700">Tanggal Cek Aki Terakhir</label>
+                    <input type="date" name="lastAccuCheckDate" id="lastAccuCheckDate" value={formData.lastAccuCheckDate} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+                </div>
+            </div>
             <div className="flex justify-end space-x-3 pt-4">
                 <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
                 <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Kendaraan</button>
@@ -572,6 +673,65 @@ const UpdateMaintenanceForm: React.FC<{ vehicle: Vehicle, onUpdate: (vehicleId: 
             </div>
         </div>
     )
+};
+
+const EditUserForm: React.FC<{ user: User, onSubmit: (userId: string, data: any) => void, onCancel: () => void }> = ({ user, onSubmit, onCancel }) => {
+    const [formData, setFormData] = useState({ username: user.username, role: user.role });
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+    };
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (formData.username) {
+            onSubmit(user.id, formData);
+        } else {
+            alert("Username tidak boleh kosong.");
+        }
+    };
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="username" className="block text-sm font-medium text-slate-700">Username</label>
+                <input type="text" name="username" id="username" value={formData.username} onChange={handleChange} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+            </div>
+            <div>
+                <label htmlFor="role" className="block text-sm font-medium text-slate-700">Role</label>
+                <select name="role" id="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white">
+                    <option value={Role.OPERATOR}>Operator</option>
+                    <option value={Role.ADMIN}>Admin</option>
+                </select>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
+                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Perubahan</button>
+            </div>
+        </form>
+    );
+};
+
+const ChangePasswordForm: React.FC<{ user: User, onSubmit: (userId: string, newPassword: string) => void, onCancel: () => void }> = ({ user, onSubmit, onCancel }) => {
+    const [newPassword, setNewPassword] = useState('');
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword.length >= 6) {
+            onSubmit(user.id, newPassword);
+        } else {
+            alert("Password minimal harus 6 karakter.");
+        }
+    };
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label htmlFor="newPassword" className="block text-sm font-medium text-slate-700">Password Baru</label>
+                <input type="password" name="newPassword" id="newPassword" value={newPassword} onChange={e => setNewPassword(e.target.value)} required className="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"/>
+            </div>
+            <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={onCancel} className="bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300">Batal</button>
+                <button type="submit" className="bg-indigo-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700">Simpan Password</button>
+            </div>
+        </form>
+    );
 };
 
 export default App;

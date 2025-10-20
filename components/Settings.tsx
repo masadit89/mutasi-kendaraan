@@ -1,12 +1,16 @@
 import React from 'react';
-import { Vehicle, User } from '../types';
-import { PlusIcon, SettingsIcon, UserIcon } from './icons';
+import { Vehicle, User, Role } from '../types';
+import { PlusIcon, SettingsIcon, UserIcon, EditIcon, TrashIcon, KeyIcon } from './icons';
 
 interface SettingsProps {
     vehicles: Vehicle[];
     onAddVehicle: () => void;
     users: User[];
     onAddUser: () => void;
+    currentUser: User | null;
+    onEditUser: (user: User) => void;
+    onChangePassword: (user: User) => void;
+    onDeleteUser: (userId: string) => void;
 }
 
 const formatDateSimple = (dateString?: string) => {
@@ -18,7 +22,7 @@ const formatDateSimple = (dateString?: string) => {
     });
 };
 
-export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, users, onAddUser }) => {
+export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, users, onAddUser, currentUser, onEditUser, onChangePassword, onDeleteUser }) => {
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <div className="flex flex-wrap justify-between items-center gap-4">
@@ -94,16 +98,30 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, user
                                 <tr>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Username</th>
                                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Role</th>
+                                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-slate-200">
                                 {users.map((user) => (
                                     <tr key={user.id} className="hover:bg-slate-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{user.username}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{user.username} {user.id === currentUser?.id && <span className="text-xs text-indigo-500">(Anda)</span>}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-600">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${user.role === 'Admin' ? 'bg-indigo-100 text-indigo-800' : 'bg-sky-100 text-sky-800'}`}>
                                                 {user.role}
                                             </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <div className="flex items-center space-x-2">
+                                                <button onClick={() => onEditUser(user)} className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-100 rounded-full transition-colors" title="Edit Pengguna">
+                                                    <EditIcon className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => onChangePassword(user)} className="p-2 text-slate-500 hover:text-sky-600 hover:bg-sky-100 rounded-full transition-colors" title="Ganti Password">
+                                                    <KeyIcon className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => onDeleteUser(user.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Hapus Pengguna" disabled={user.id === currentUser?.id}>
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
