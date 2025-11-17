@@ -15,6 +15,7 @@ interface ReportViewerProps {
     reportId: string;
     mutations: Mutation[];
     vehicles: Vehicle[];
+    onViewImage: (src: string) => void;
 }
 
 const formatDate = (dateString?: string) => {
@@ -25,7 +26,7 @@ const formatDate = (dateString?: string) => {
     });
 };
 
-export const ReportViewer: React.FC<ReportViewerProps> = ({ reportId, mutations, vehicles }) => {
+export const ReportViewer: React.FC<ReportViewerProps> = ({ reportId, mutations, vehicles, onViewImage }) => {
     const [mutation, setMutation] = useState<Mutation | null>(null);
     const [vehicle, setVehicle] = useState<Vehicle | null>(null);
     const qrcodeRef = useRef<HTMLDivElement>(null);
@@ -100,13 +101,15 @@ export const ReportViewer: React.FC<ReportViewerProps> = ({ reportId, mutations,
                     {/* Left: Details */}
                     <div className="md:col-span-2 space-y-6">
                         <div className="flex items-center space-x-4">
-                             {mutation.driverPhoto ? (
-                                <img src={mutation.driverPhoto} alt={mutation.driver} className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg" />
-                            ) : (
-                                <div className="h-24 w-24 rounded-full bg-slate-200 flex items-center justify-center">
-                                    <UserIcon className="w-12 h-12 text-slate-400" />
-                                </div>
-                            )}
+                             <button onClick={() => mutation.driverPhoto && onViewImage(mutation.driverPhoto)} className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-green-500 rounded-full">
+                                {mutation.driverPhoto ? (
+                                    <img src={mutation.driverPhoto} alt={mutation.driver} className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-lg" />
+                                ) : (
+                                    <div className="h-24 w-24 rounded-full bg-slate-200 flex items-center justify-center">
+                                        <UserIcon className="w-12 h-12 text-slate-400" />
+                                    </div>
+                                )}
+                            </button>
                             <div>
                                <p className="text-sm text-slate-500">Pengemudi</p>
                                <p className="text-2xl font-semibold text-slate-800">{mutation.driver}</p>

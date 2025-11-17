@@ -13,6 +13,7 @@ interface SettingsProps {
     onEditUser: (user: User) => void;
     onChangePassword: (user: User) => void;
     onDeleteUser: (userId: string) => void;
+    isSubmitting?: boolean;
 }
 
 const formatDateSimple = (dateString?: string) => {
@@ -24,7 +25,7 @@ const formatDateSimple = (dateString?: string) => {
     });
 };
 
-export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEditVehicle, onDeleteVehicle, users, onAddUser, currentUser, onEditUser, onChangePassword, onDeleteUser }) => {
+export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEditVehicle, onDeleteVehicle, users, onAddUser, currentUser, onEditUser, onChangePassword, onDeleteUser, isSubmitting }) => {
     return (
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
             <div className="flex flex-wrap justify-between items-center gap-4">
@@ -40,7 +41,8 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEd
                     <h3 className="text-xl font-semibold text-slate-800">Manajemen Kendaraan</h3>
                     <button 
                         onClick={onAddVehicle}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                        disabled={isSubmitting}
+                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:bg-green-400 disabled:cursor-not-allowed"
                     >
                         <PlusIcon className="w-5 h-5"/>
                         Tambah Kendaraan
@@ -75,10 +77,10 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEd
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center space-x-2">
-                                                <button onClick={() => onEditVehicle(vehicle)} className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-100 rounded-full transition-colors" title="Edit Kendaraan">
+                                                <button onClick={() => onEditVehicle(vehicle)} disabled={isSubmitting} className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Edit Kendaraan">
                                                     <EditIcon className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => onDeleteVehicle(vehicle.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors" title="Hapus Kendaraan">
+                                                <button onClick={() => onDeleteVehicle(vehicle.id)} disabled={isSubmitting} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Hapus Kendaraan">
                                                     <TrashIcon className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -98,7 +100,8 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEd
                     <h3 className="text-xl font-semibold text-slate-800">Manajemen Pengguna</h3>
                     <button 
                         onClick={onAddUser}
-                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200"
+                        disabled={isSubmitting}
+                        className="flex items-center gap-2 bg-slate-700 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200 disabled:bg-slate-500 disabled:cursor-not-allowed"
                     >
                         <UserIcon className="w-5 h-5"/>
                         Tambah Pengguna
@@ -125,13 +128,13 @@ export const Settings: React.FC<SettingsProps> = ({ vehicles, onAddVehicle, onEd
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <div className="flex items-center space-x-2">
-                                                <button onClick={() => onEditUser(user)} className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-100 rounded-full transition-colors" title="Edit Pengguna">
+                                                <button onClick={() => onEditUser(user)} disabled={isSubmitting} className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Edit Pengguna">
                                                     <EditIcon className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => onChangePassword(user)} className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-100 rounded-full transition-colors" title="Ganti Password">
+                                                <button onClick={() => onChangePassword(user)} disabled={isSubmitting} className="p-2 text-slate-500 hover:text-orange-600 hover:bg-orange-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Ganti Password">
                                                     <KeyIcon className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={() => onDeleteUser(user.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Hapus Pengguna" disabled={user.id === currentUser?.id}>
+                                                <button onClick={() => onDeleteUser(user.id)} className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-100 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed" title="Hapus Pengguna" disabled={user.id === currentUser?.id || isSubmitting}>
                                                     <TrashIcon className="w-4 h-4" />
                                                 </button>
                                             </div>

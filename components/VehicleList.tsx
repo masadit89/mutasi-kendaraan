@@ -1,6 +1,6 @@
 import React from 'react';
 import { Vehicle, VehicleStatus } from '../types';
-import { CarIcon, AlertTriangleIcon, ToolIcon } from './icons';
+import { CarIcon, AlertTriangleIcon, ToolIcon, RefreshIcon } from './icons';
 
 interface MaintenanceAlert {
   vehicle: Vehicle;
@@ -57,6 +57,7 @@ interface VehicleListProps {
   onVehicleSelect: (vehicle: Vehicle) => void;
   maintenanceAlerts: MaintenanceAlert[];
   onOpenMaintenanceModal: (vehicle: Vehicle) => void;
+  onRefresh: () => void;
 }
 
 const VehicleButton: React.FC<{ vehicle: Vehicle; onSelect: () => void; }> = ({ vehicle, onSelect }) => {
@@ -80,14 +81,24 @@ const VehicleButton: React.FC<{ vehicle: Vehicle; onSelect: () => void; }> = ({ 
 };
 
 
-export const VehicleList: React.FC<VehicleListProps> = ({ vehicles, onVehicleSelect, maintenanceAlerts, onOpenMaintenanceModal }) => {
+export const VehicleList: React.FC<VehicleListProps> = ({ vehicles, onVehicleSelect, maintenanceAlerts, onOpenMaintenanceModal, onRefresh }) => {
   return (
     <div className="p-4 sm:p-6 lg:p-8">
         <MaintenanceAlerts alerts={maintenanceAlerts} onUpdateMaintenance={onOpenMaintenanceModal} />
 
-        <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800">Dashboard Kendaraan GLZoo</h2>
-            <p className="text-slate-600">Pilih kendaraan untuk memulai atau menyelesaikan perjalanan.</p>
+        <div className="mb-6 flex justify-between items-start">
+            <div>
+                <h2 className="text-2xl font-bold text-slate-800">Dashboard Kendaraan GLZoo</h2>
+                <p className="text-slate-600">Pilih kendaraan untuk memulai atau menyelesaikan perjalanan.</p>
+            </div>
+            <button 
+              onClick={onRefresh}
+              className="flex items-center gap-2 bg-white border border-slate-300 text-slate-700 font-semibold py-2 px-4 rounded-lg hover:bg-slate-50 transition-colors duration-200"
+              aria-label="Segarkan data kendaraan"
+            >
+              <RefreshIcon className="w-5 h-5"/>
+              <span className="hidden sm:inline">Segarkan</span>
+            </button>
         </div>
         
         {vehicles.length > 0 ? (

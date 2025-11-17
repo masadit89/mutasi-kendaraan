@@ -1,36 +1,51 @@
+import React from 'react';
+import { ServerIcon } from './icons';
 
-import React, { useState } from 'react';
-import { ServerIcon } from './icons'; 
+const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <pre className="bg-slate-800 text-white p-4 rounded-lg overflow-x-auto text-xs">
+        <code>{children}</code>
+    </pre>
+);
 
-interface ApiConfigModalProps {
-  // No props needed anymore
-}
-
-const CodeBlock: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [copied, setCopied] = useState(false);
-    const handleCopy = () => {
-        if(typeof children === 'string') {
-            navigator.clipboard.writeText(children);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
-        }
-    };
-    return (
-        <pre className="bg-slate-800 text-white p-4 rounded-md text-xs overflow-x-auto relative">
-            <button onClick={handleCopy} className="absolute top-2 right-2 bg-slate-600 hover:bg-slate-500 text-white text-xs font-semibold px-2 py-1 rounded">
-                {copied ? 'Disalin!' : 'Salin'}
-            </button>
-            <code>{children}</code>
-        </pre>
-    );
-};
-
-export const ApiConfigModal: React.FC<ApiConfigModalProps> = () => {
-  const appsScriptCode = `
-const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
+export const ApiConfigModal: React.FC = () => {
+  const appsScriptCode = `const SPREADSHEET = SpreadsheetApp.getActiveSpreadsheet();
 const VEHICLES_SHEET = SPREADSHEET.getSheetByName("Vehicles");
 const MUTATIONS_SHEET = SPREADSHEET.getSheetByName("Mutations");
 const USERS_SHEET = SPREADSHEET.getSheetByName("Users");
+const PHOTO_FOLDER_NAME = "Foto Mutasi Kendaraan";
+
+// --- Helper Functions ---
+
+// Get or create a folder in Google Drive
+const getOrCreateFolder = (folderName) => {
+  const folders = DriveApp.getFoldersByName(folderName);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return DriveApp.createFolder(folderName);
+};
+
+// Upload a base64 image to a specific Drive folder
+const uploadPhotoToDrive = (base64Data, folder) => {
+  if (!base64Data || !base64Data.startsWith('data:image')) {
+    return base64Data; // Return original value if not a valid base64 image
+  }
+  try {
+    const parts = base64Data.split(',');
+    const mimeType = parts[0].match(/:(.*?);/)[1];
+    const decoded = Utilities.base64Decode(parts[1]);
+    const blob = Utilities.newBlob(decoded, mimeType, \`photo-\${new Date().getTime()}.jpg\`);
+    
+    const file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    
+    // Return a direct viewable link for the image
+    return \`https://drive.google.com/uc?export=view&id=\${file.getId()}\`;
+  } catch (e) {
+    Logger.log('Error uploading photo: ' + e.toString());
+    return null; // Return null if upload fails
+  }
+};
 
 const sheetToJSON = (sheet) => {
   if (!sheet) return [];
@@ -41,14 +56,10 @@ const sheetToJSON = (sheet) => {
     const obj = {};
     headers.forEach((header, i) => {
       let value = row[i];
-      if (typeof value === 'string') {
-        if (!isNaN(value) && !isNaN(parseFloat(value)) && value.trim() !== '') {
-            value = Number(value);
-        } else if (value.toLowerCase() === 'true') {
-            value = true;
-        } else if (value.toLowerCase() === 'false') {
-            value = false;
-        }
+      if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
+        try {
+          value = JSON.parse(value);
+        } catch (e) { /* Not a valid JSON, leave as is */ }
       }
       obj[header] = value;
     });
@@ -62,6 +73,8 @@ const findRowById = (sheet, id) => {
   const rowIndex = ids.findIndex(cellId => cellId.toString() === id.toString());
   return rowIndex === -1 ? -1 : rowIndex + 2;
 };
+
+// --- API Endpoints ---
 
 function doGet(e) {
   try {
@@ -88,14 +101,28 @@ function doPost(e) {
     let result = { success: false, message: "Invalid action" };
     
     const getHeaders = (sheet) => sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(h => h.toString().trim());
+    
+    const prepareValue = (value) => {
+        if (value === undefined || value === null) return "";
+        if (Array.isArray(value)) return JSON.stringify(value);
+        return value;
+    };
 
     switch (action) {
       case 'ADD_DATA': {
         const { sheetName, data } = payload;
         const sheet = SPREADSHEET.getSheetByName(sheetName);
+
+        if (sheetName === 'Mutations') {
+          const photoFolder = getOrCreateFolder(PHOTO_FOLDER_NAME);
+          if (data.driverPhoto) {
+            data.driverPhoto = uploadPhotoToDrive(data.driverPhoto, photoFolder);
+          }
+        }
+
         if (sheet) {
           const headers = getHeaders(sheet);
-          const newRow = headers.map(header => data[header] === undefined ? "" : data[header]);
+          const newRow = headers.map(header => prepareValue(data[header]));
           sheet.appendRow(newRow);
           result = { success: true, data };
         } else {
@@ -110,8 +137,13 @@ function doPost(e) {
           const rowIndex = findRowById(sheet, data.id);
           if (rowIndex !== -1) {
             const headers = getHeaders(sheet);
-            const updatedRow = headers.map(header => data[header] !== undefined ? data[header] : sheet.getRange(rowIndex, headers.indexOf(header) + 1).getValue());
-            sheet.getRange(rowIndex, 1, 1, headers.length).setValues([updatedRow]);
+            headers.forEach((header, index) => {
+              // Check if the incoming data object has this property to update
+              if (data.hasOwnProperty(header)) {
+                // Update only the specific cell
+                sheet.getRange(rowIndex, index + 1).setValue(prepareValue(data[header]));
+              }
+            });
             result = { success: true, data };
           } else {
             result.message = "Row not found with id: " + data.id;
@@ -178,7 +210,11 @@ function doPost(e) {
             </div>
 
              <div>
-                <h3 className="font-bold text-lg mb-2">Langkah 2: Buat & Deploy Apps Script</h3>
+                <h3 className="font-bold text-lg mb-2">Langkah 2: Buat &amp; Deploy Apps Script</h3>
+                 <div className="p-4 mb-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800">
+                    <p className="font-bold">Pembaruan Penting!</p>
+                    <p>Skrip ini sekarang akan menyimpan foto ke Google Drive Anda. Anda harus men-deploy ulang dan memberi otorisasi ulang (re-authorize) akses ke Drive.</p>
+                </div>
                  <ol className="list-decimal list-inside space-y-2 pl-4">
                     <li>Di Google Sheet Anda, buka `Extensions` &gt; `Apps Script`.</li>
                     <li>Hapus kode contoh dan salin semua kode di bawah ini ke editor.</li>
@@ -191,7 +227,7 @@ function doPost(e) {
                     <li>Klik **Deploy** &gt; **New deployment**.</li>
                     <li>Pilih Tipe: **Web app**.</li>
                     <li>Konfigurasi: Description: `API Kendaraan`, Execute as: `Me`, Who has access: `Anyone`.</li>
-                    <li>Klik **Deploy**, lalu **Authorize access**. Ikuti petunjuk untuk memberi izin (termasuk klik "Advanced" dan "Go to... (unsafe)").</li>
+                    <li>Klik **Deploy**, lalu **Authorize access**. Ikuti petunjuk untuk memberi izin (termasuk klik "Advanced" dan "Go to... (unsafe)"). **Pastikan Anda menyetujui akses ke Google Drive**.</li>
                     <li>Salin **Web app URL** yang muncul setelah deployment berhasil.</li>
                 </ol>
             </div>

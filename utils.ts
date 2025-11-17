@@ -16,6 +16,30 @@ const formatDate = (dateString?: string) => {
   });
 };
 
+// Helper to fetch an image from a URL and convert it to a base64 string
+const imageUrlToBase64 = async (url: string): Promise<string> => {
+    try {
+        // Using a proxy might be necessary if CORS issues persist with Google Drive URLs.
+        // For simplicity, we'll try a direct fetch first.
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error(`Could not convert image URL to base64: ${url}`, error);
+        // Return a placeholder or handle the error as needed
+        return ''; 
+    }
+};
+
+
 export const generateSingleReportPdf = async (mutation: Mutation, vehicle: Vehicle) => {
     if (!vehicle || !mutation.endTime || mutation.endKm === undefined || mutation.distance === undefined) {
         alert("Data perjalanan tidak lengkap untuk membuat PDF.");
@@ -96,15 +120,18 @@ export const generateSingleReportPdf = async (mutation: Mutation, vehicle: Vehic
     // Driver Photo
     let photoFinalY = 35;
     if (mutation.driverPhoto) {
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Foto Pengemudi:', 150, 40);
-        doc.addImage(mutation.driverPhoto, 'JPEG', 150, 45, 40, 40);
-        doc.rect(150, 45, 40, 40); // Photo border
-        photoFinalY = 45 + 40;
+        const driverPhotoBase64 = await imageUrlToBase64(mutation.driverPhoto);
+        if (driverPhotoBase64) {
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Foto Pengemudi:', 150, 40);
+            doc.addImage(driverPhotoBase64, 'JPEG', 150, 45, 40, 40);
+            doc.rect(150, 45, 40, 40); // Photo border
+            photoFinalY = 45 + 40;
+        }
     }
 
-    const nextSectionY = Math.max(tableFinalY, photoFinalY) + 15;
+    let nextSectionY = Math.max(tableFinalY, photoFinalY) + 10;
 
     // Notes Section
     doc.setFontSize(12);
@@ -113,12 +140,18 @@ export const generateSingleReportPdf = async (mutation: Mutation, vehicle: Vehic
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(11);
     const notesText = doc.splitTextToSize(mutation.notes || 'Tidak ada catatan.', 170);
-    doc.text(notesText, 22, nextSectionY + 7);
-    const notesHeight = Math.max(30, notesText.length * 5 + 10);
+    const notesHeight = Math.max(25, notesText.length * 5 + 10);
     doc.rect(20, nextSectionY + 3, 170, notesHeight);
+    doc.text(notesText, 22, nextSectionY + 7);
+    nextSectionY += notesHeight + 10;
 
     // Signature Section
-    const signatureY = nextSectionY + notesHeight + 25;
+    let signatureY = nextSectionY;
+    if (signatureY > 220) { // If not enough space, add new page for signatures
+        doc.addPage();
+        signatureY = 30;
+    }
+    
     doc.setFontSize(11);
     doc.text('Diserahkan oleh,', 30, signatureY);
     doc.text('Diterima & Diverifikasi oleh,', 140, signatureY);

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Mutation, MutationStatus, Vehicle } from '../types';
-import { HistoryIcon, DownloadIcon, SheetIcon, SearchIcon } from './icons';
+import { HistoryIcon, DownloadIcon, SheetIcon, SearchIcon, RefreshIcon } from './icons';
 import { generateSingleReportPdf } from '../utils';
 
 // Add type declaration for jsPDF libraries loaded from CDN
@@ -13,6 +13,7 @@ declare global {
 interface MutationLogProps {
   mutations: Mutation[];
   vehicles: Vehicle[];
+  onRefresh: () => void;
 }
 
 const formatDate = (dateString?: string) => {
@@ -23,7 +24,7 @@ const formatDate = (dateString?: string) => {
   });
 };
 
-export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles }) => {
+export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles, onRefresh }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [searchDriver, setSearchDriver] = useState('');
@@ -142,11 +143,21 @@ export const MutationLog: React.FC<MutationLogProps> = ({ mutations, vehicles })
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <HistoryIcon className="w-7 h-7 text-green-600"/>
-              Log Perjalanan Kendaraan
-          </h2>
-          <p className="text-slate-600">Riwayat semua perjalanan yang telah dicatat dalam sistem.</p>
+            <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <HistoryIcon className="w-7 h-7 text-green-600"/>
+                    Log Perjalanan Kendaraan
+                </h2>
+                <button 
+                  onClick={onRefresh}
+                  className="p-2 text-slate-500 rounded-full hover:bg-slate-100 hover:text-slate-800"
+                  aria-label="Segarkan data log"
+                  title="Segarkan Data"
+                >
+                    <RefreshIcon className="h-5 w-5"/>
+                </button>
+            </div>
+            <p className="text-slate-600">Riwayat semua perjalanan yang telah dicatat dalam sistem.</p>
         </div>
         <div className="flex items-center gap-2">
             <button onClick={exportToCsv} className="flex items-center gap-2 bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200" title="Ekspor ke CSV (Excel/Google Sheets)" aria-label="Ekspor ke CSV">
